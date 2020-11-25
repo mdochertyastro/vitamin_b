@@ -82,12 +82,18 @@ y_normscale = 36.0
 ndata = 256                                                                     
 det=['H1','L1','V1']                                                            
 psd_files=[] 
-#rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase',
-#                 'theta_jn','psi','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec']                                   
-#inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec'] 
+
+# full param space
+
 rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase',
-                 'theta_jn','psi','ra','dec']
-inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','ra','dec']
+                'theta_jn','psi','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec']                                   
+inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec'] 
+
+# param space sub-set
+
+# rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase',
+#                  'theta_jn','psi','ra','dec']
+# inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','ra','dec']
 batch_size = 512                                                                 
 weight_init = 'xavier'                                                            
 n_modes=16                                                                      
@@ -129,7 +135,7 @@ run_label = 'public_model'#'demo_%ddet_%dpar_%dHz_hour_angle_with_late_kl_start'
 # 1024 Hz label
 #bilby_results_label = 'weichangfeng_theta_jn_issue'                                             
 # 256 Hz label
-bilby_results_label = 'all_4_samplers'
+bilby_results_label = 'all_4_samplers' # do it at 256Hz
 
 r = 1                                                          
 pe_test_num = 256                                                               
