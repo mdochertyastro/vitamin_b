@@ -269,6 +269,7 @@ def gen_template(duration,
     print('... Injected signal')
     whitened_signal_td_all = []
     whitened_h_td_all = [] 
+    uufd=[]
     # iterate over ifos
     for i in range(len(pars['det'])):
         # get frequency domain noise-free signal at detector
@@ -292,9 +293,10 @@ def gen_template(duration,
         
         whitened_h_td_all.append([whitened_h_td])
         whitened_signal_td_all.append([whitened_signal_td])
+        uufd.append([h_fd])
 
     print('... Whitened signals')
-    return np.squeeze(np.array(whitened_signal_td_all),axis=1),np.squeeze(np.array(whitened_h_td_all),axis=1),injection_parameters,ifos,waveform_generator
+    return np.squeeze(np.array(whitened_signal_td_all),axis=1),np.squeeze(np.array(whitened_h_td_all),axis=1),injection_parameters,ifos,waveform_generator,np.squeeze(np.array(uufd),axis=1)
 
 def gen_masses(m_min=5.0,M_max=100.0,mdist='metric'):
 
@@ -698,7 +700,7 @@ def run(sampling_frequency=256.0,
         
             # make the data - shift geocent time to correct reference
             pars['geocent_time'] += ref_geocent_time
-            train_samp_noisefree, train_samp_noisy,_,ifos,_ = gen_template(duration,sampling_frequency,
+            train_samp_noisefree, train_samp_noisy,_,ifos,_,_ = gen_template(duration,sampling_frequency,
                                                                            pars,ref_geocent_time,psd_files,
                                                                            use_real_det_noise=use_real_det_noise
                                                                            )
@@ -729,7 +731,7 @@ def run(sampling_frequency=256.0,
 
             # inject signal - shift geocent time to correct reference
             pars['geocent_time'] += ref_geocent_time
-            test_samples_noisefree,test_samples_noisy,injection_parameters,ifos,waveform_generator = gen_template(duration,sampling_frequency,
+            test_samples_noisefree,test_samples_noisy,injection_parameters,ifos,waveform_generator,uufd = gen_template(duration,sampling_frequency,
                                    pars,ref_geocent_time,psd_files)
 
             # get test sample snr
@@ -742,7 +744,7 @@ def run(sampling_frequency=256.0,
 
         # if not doing PE then return signal data
         if not do_pe:
-            return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr
+            return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr,uufd
 
         try:
             bilby.core.utils.setup_logger(outdir=out_dir, label=label)
@@ -911,7 +913,7 @@ def run(sampling_frequency=256.0,
                     for file in file_type:
                         os.remove(file)
                 print('finished running pe')
-                return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr
+                return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr,uufd
 
             run_startt = time.time()
 
