@@ -517,7 +517,7 @@ def importance_sampling(fixed_vals, params, result, all_x_test, seed=None, outdi
         phase=pars['phase'], geocent_time=pars['geocent_time'], ra=pars['ra'], dec=pars['dec'])
 
     # Fixed arguments passed into the source model
-    waveform_arguments = dict(waveform_approximant='IMRPhenomPv2',
+    waveform_arguments = dict(waveform_approximant='IMRPhenomPv2', # Nees to be the same one that vitamin was trained on
                               reference_frequency=20., minimum_frequency=20.)
 
     # Create the waveform_generator using a LAL BinaryBlackHole source function
@@ -538,7 +538,7 @@ def importance_sampling(fixed_vals, params, result, all_x_test, seed=None, outdi
 
     # Set up interferometers. These default to their design
     # sensitivity
-    ifos = bilby.gw.detector.InterferometerList(params['det'])
+    # ifos = bilby.gw.detector.InterferometerList(params['det']) # can get rid of as repeats line above
 
     # If user is specifying PSD files
     if len(psd_files) > 0:
@@ -554,16 +554,16 @@ def importance_sampling(fixed_vals, params, result, all_x_test, seed=None, outdi
     ifos.inject_signal(waveform_generator=waveform_generator,
                        parameters=injection_parameters)
 
-    # Create the GW likelihood
+    # Create the GW likelihood # would need to make phase margin
     likelihood = bilby.gw.GravitationalWaveTransient(
         interferometers=ifos, waveform_generator=waveform_generator)
 
     # Now, it is time to determine the new likelihood values
-    print('Need to figure out how to get likelihood out of VItamin')
-    exit()
-    likelihoods_old = result.posterior['log_likelihood'] # TODO: how do I get log likelihood out of VItamin??
-    posterior_dict_old = result.posterior
-    number_of_samples = len(likelihoods_old)
+    # print('Need to figure out how to get likelihood out of VItamin')
+    # exit()
+    likelihoods_old = result.posterior['log_likelihood'] # TODO: how do I get log likelihood out of VItamin??, replace the RHS of this with my vit loglikes
+    posterior_dict_old = result.posterior # result.posterior is bilby''s way of getting posterior
+    number_of_samples = len(likelihoods_old) # old is bilby (i think)
 
     print(start_sample, number_of_samples)
 
@@ -587,6 +587,8 @@ def importance_sampling(fixed_vals, params, result, all_x_test, seed=None, outdi
             geocent_time=posterior_dict_old['geocent_time'][i],
             ra=posterior_dict_old['ra'][i], dec=posterior_dict_old['dec'][i])
 
+        '''IS starts'''
+
         likelihood.parameters = likelihood_parameters
         likelihood_new = likelihood.log_likelihood_ratio()
         weight = np.exp(likelihood_new - likelihoods_old[i])
@@ -604,6 +606,222 @@ def importance_sampling(fixed_vals, params, result, all_x_test, seed=None, outdi
         array_to_be_saved)
 
     return data
+
+'''
+import matplotlib as mpl; mpl.use("agg")
+import bilby
+import numpy as np
+import sys
+import glob
+import matplotlib.pyplot as plt
+import source as src
+import source_gws2
+import os
+#from required_run_data import sampling_frequency, minimum_frequency, duration # TODO REMOVE LATER
+
+outdir = sys.argv[1]
+start_sample = int(sys.argv[2])
+end_sample = int(sys.argv[3])
+
+
+try:
+    # Create target Directory
+    os.mkdir(outdir+'/HM_evaluations/')
+    print("Sample Directory Created ")
+except:
+    print("Sample Directory already exists")
+
+# load in result file:
+result_file = outdir+'/corrected_result.json' # changed from corrected_result.json # this is a json of thousands of pots samples for each param and lists priors at start of file
+result = bilby.core.result.read_in_result(filename=result_file)
+# Get the time of the event for the calculation
+data = np.genfromtxt(outdir+'/time_data.dat')
+time_of_event = data[0]; start_time = data[1]; duration = data[2]
+minimum_frequency = data[3]; sampling_frequency = data[4]
+#time_of_event = data
+#start_time = time_of_event - 2 # TODO REMOVE THESE LATER
+
+# lets import the data, setting up the interferometers
+try:
+    ASD_data_file = np.genfromtxt(outdir+'/pr_psd.dat')
+    if len(ASD_data_file[0]) == 3:
+        ifos = bilby.gw.detector.InterferometerList(['H1', 'L1'])
+    elif len(ASD_data_file[0]) == 4:
+        ifos = bilby.gw.detector.InterferometerList(['H1', 'L1', 'V1'])
+except:
+    ifos = bilby.gw.detector.InterferometerList(['H1', 'L1'])
+
+for ifo in ifos:
+    FD_strain = np.loadtxt(outdir+'/'+ifo.name+'_frequency_domain_data.dat')
+
+    ifo.minimum_frequency = minimum_frequency
+    ifo.maximum_frequency = sampling_frequency/2.
+
+    ifo.set_strain_data_from_frequency_domain_strain(
+        FD_strain[:,1]+1j*FD_strain[:,2], sampling_frequency=sampling_frequency,
+        duration=duration, start_time = start_time
+    )
+
+    ifo.power_spectral_density = bilby.gw.detector.PowerSpectralDensity.from_amplitude_spectral_density_file(
+        outdir+'/'+ifo.name+'_psd.dat'
+    )
+    ifo.power_spectral_density.psd_array = np.minimum(ifo.power_spectral_density.psd_array, 1)
+    #ASD_data = np.genfromtxt(outdir+'/'+ifo.name+'_psd.dat')
+
+# Construct the appropriate waveform generator
+waveform_arguments_HM = dict(
+                             reference_frequency=50., minimum_frequency=20.
+                             )
+
+waveform_generator_HM = bilby.gw.WaveformGenerator(
+    duration=duration, sampling_frequency=sampling_frequency,
+    #frequency_domain_source_model=src.NRSur7dq2_nominal,
+    frequency_domain_source_model=source_gws2.gws_nominal,
+    parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
+    waveform_arguments=waveform_arguments_HM,
+    start_time=start_time)
+
+# Create the GW likelihood
+likelihood = bilby.gw.GravitationalWaveTransient(
+    interferometers=ifos, waveform_generator=waveform_generator_HM)
+
+# Now, it is time to determine the new likelihood values
+likelihoods_22 = result.posterior['log_likelihood'] # from the result json file, this is a list of log_likelihoods for each n samples, 1d array with dict key being 'log_likelihood' the overall dict being posterior and the entry being a 1s array len nsamp.
+print(result)
+posterior_dict_22 = result.posterior # contains all param samples and likelihoods as a dict
+number_of_samples = len(likelihoods_22) # nsamp from json 
+
+print(start_sample, number_of_samples)
+
+likelihoods_HM = []
+weights = []
+
+if end_sample >= number_of_samples: print('setting end sample to max sample'); end_sample = number_of_samples
+
+if start_sample >= number_of_samples:
+    raise ValueError('You are outside of the number of samples')
+
+for i in range(start_sample,end_sample):
+
+    likelihood_parameters = dict(
+        mass_1=posterior_dict_22['mass_1'][i],
+        mass_2=posterior_dict_22['mass_2'][i],
+        chi_1=posterior_dict_22['chi_1'][i], chi_2=posterior_dict_22['chi_2'][i],
+        luminosity_distance=posterior_dict_22['luminosity_distance'][i],
+        theta_jn=posterior_dict_22['theta_jn'][i], psi=posterior_dict_22['psi'][i],
+        phase=posterior_dict_22['phase'][i],
+        geocent_time=posterior_dict_22['geocent_time'][i],
+        ra=posterior_dict_22['ra'][i], dec=posterior_dict_22['dec'][i])
+
+    likelihood.parameters = likelihood_parameters
+    likelihood_HM = likelihood.log_likelihood_ratio()
+    weight = np.exp(likelihood_HM - likelihoods_22[i])
+
+    likelihoods_HM.append(likelihood_HM)
+    weights.append(weight)
+
+    print(likelihoods_22[i], likelihood_HM, likelihood_HM - likelihoods_22[i])
+    print('evalution {}/{}'.format(i, number_of_samples))
+
+array_to_be_saved = np.array([likelihoods_22[start_sample:end_sample],
+                              likelihoods_HM, weights]).T
+
+np.savetxt(outdir+'/HM_evaluations/s{}e{}.dat'.format(start_sample,end_sample),
+    array_to_be_saved)
+'''
+
+'''
+
+# need to read in bounds and inf pars
+
+# if you read in params to overall function then inf pars can be called with params['inf_pars']
+# note, bounds and params are gloabl in run_vit script so just need to feed them into my bilby function and call it from run vit and theyre all there!
+
+priors = bilby.gw.prior.BBHPriorDict()
+        # priors.pop('chirp_mass')
+        # priors['mass_ratio'] = bilby.gw.prior.Constraint(minimum=0.125, maximum=1, name='mass_ratio', latex_label='$q$', unit=None)
+        if np.any([r=='geocent_time' for r in inf_pars]): # need to read in inf pars = params['inf_pars']
+            priors['geocent_time'] = bilby.core.prior.Uniform(
+                minimum=ref_geocent_time + bounds['geocent_time_min'],
+                maximum=ref_geocent_time + bounds['geocent_time_max'],
+                name='geocent_time', latex_label='$t_c$', unit='$s$')
+        else:
+            priors['geocent_time'] = fixed_vals['geocent_time']
+
+        if np.any([r=='mass_1' for r in inf_pars]):
+            priors['mass_1'] = bilby.gw.prior.Uniform(name='mass_1', minimum=bounds['mass_1_min'], maximum=bounds['mass_1_max'],unit='$M_{\odot}$')
+        else:
+            priors['mass_1'] = fixed_vals['mass_1']
+
+        if np.any([r=='mass_2' for r in inf_pars]):
+            priors['mass_2'] = bilby.gw.prior.Uniform(name='mass_2', minimum=bounds['mass_2_min'], maximum=bounds['mass_2_max'],unit='$M_{\odot}$')
+        else:
+            priors['mass_2'] = fixed_vals['mass_2']
+
+        if np.any([r=='a_1' for r in inf_pars]):
+            priors['a_1'] = bilby.gw.prior.Uniform(name='a_1', minimum=bounds['a_1_min'], maximum=bounds['a_1_max'])
+        else:
+            priors['a_1'] = fixed_vals['a_1']
+
+        if np.any([r=='a_2' for r in inf_pars]):
+            priors['a_2'] = bilby.gw.prior.Uniform(name='a_2', minimum=bounds['a_2_min'], maximum=bounds['a_2_max'])
+        else:
+            priors['a_2'] = fixed_vals['a_2']
+
+        if np.any([r=='tilt_1' for r in inf_pars]):
+#            priors['tilt_1'] = bilby.gw.prior.Uniform(name='tilt_1', minimum=bounds['tilt_1_min'], maximum=bounds['tilt_1_max'])
+            pass
+        else:
+            priors['tilt_1'] = fixed_vals['tilt_1']
+
+        if np.any([r=='tilt_2' for r in inf_pars]):
+#            priors['tilt_2'] = bilby.gw.prior.Uniform(name='tilt_2', minimum=bounds['tilt_2_min'], maximum=bounds['tilt_2_max'])
+            pass
+        else:
+            priors['tilt_2'] = fixed_vals['tilt_2']
+
+        if np.any([r=='phi_12' for r in inf_pars]):
+            priors['phi_12'] = bilby.gw.prior.Uniform(name='phi_12', minimum=bounds['phi_12_min'], maximum=bounds['phi_12_max'], boundary='periodic')
+        else:
+            priors['phi_12'] = fixed_vals['phi_12']
+
+        if np.any([r=='phi_jl' for r in inf_pars]):
+            priors['phi_jl'] = bilby.gw.prior.Uniform(name='phi_jl', minimum=bounds['phi_jl_min'], maximum=bounds['phi_jl_max'], boundary='periodic')
+        else:
+            priors['phi_jl'] = fixed_vals['phi_jl']
+
+        if np.any([r=='ra' for r in inf_pars]):
+            priors['ra'] = bilby.gw.prior.Uniform(name='ra', minimum=bounds['ra_min'], maximum=bounds['ra_max'], boundary='periodic')
+        else:
+            priors['ra'] = fixed_vals['ra']
+
+        if np.any([r=='dec' for r in inf_pars]):
+            pass
+        else:    
+            priors['dec'] = fixed_vals['dec']
+
+        if np.any([r=='psi' for r in inf_pars]): # need to int to manually marginalise over this
+            priors['psi'] = bilby.gw.prior.Uniform(name='psi', minimum=bounds['psi_min'], maximum=bounds['psi_max'], boundary='periodic')
+        else:
+            priors['psi'] = fixed_vals['psi']
+
+        if np.any([r=='theta_jn' for r in inf_pars]):
+            pass
+        else:
+            priors['theta_jn'] = fixed_vals['theta_jn']
+
+        if np.any([r=='phase' for r in inf_pars]): # marginalising over this
+            priors['phase'] = bilby.gw.prior.Uniform(name='phase', minimum=bounds['phase_min'], maximum=bounds['phase_max'], boundary='periodic')
+        else:
+            priors['phase'] = fixed_vals['phase']
+
+        if np.any([r=='luminosity_distance' for r in inf_pars]):
+            priors['luminosity_distance'] =  bilby.gw.prior.Uniform(name='luminosity_distance', minimum=bounds['luminosity_distance_min'], maximum=bounds['luminosity_distance_max'], unit='Mpc')
+        else:
+            priors['luminosity_distance'] = fixed_vals['luminosity_distance']
+'''
+
+
 
 def run(sampling_frequency=256.0,
            duration=1.,
