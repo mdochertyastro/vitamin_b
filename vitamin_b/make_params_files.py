@@ -202,7 +202,7 @@ def get_params():
         __definition__load_plot_data='Use plotting data which has already been generated',
         doPE = True,                                                            
         __definition__doPE='if True then do bilby PE when generating new testing samples',
-        gpu_num=5,                                                              
+        gpu_num=2,                                                              
         __definition__gpu_num='gpu number run is running on',
         ndata = ndata,                                                          
         __definition__ndata='sampling frequency',
