@@ -85,15 +85,15 @@ psd_files=[]
 
 # full param space
 
-rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase',
-                'theta_jn','psi','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec']                                   
-inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec'] 
+# rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase',
+#                 'theta_jn','psi','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec']                                   
+# inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec'] 
 
 # param space sub-set
 
-# rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase',
-#                  'theta_jn','psi','ra','dec']
-# inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','ra','dec']
+rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase',
+                 'theta_jn','psi','ra','dec']
+inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','ra','dec']
 batch_size = 512                                                                 
 weight_init = 'xavier'                                                            
 n_modes=16                                                                      
