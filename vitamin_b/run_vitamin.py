@@ -44,8 +44,8 @@ from skopt.utils import use_named_args
 
 try:
     from .models import CVAE_model
-    # from . import importance_functions
-    import importance_functions
+    from .models import importance_functions
+    # import importance_functions
     from .gen_benchmark_pe import run
     from . import plotting
     from .plotting import prune_samples
@@ -53,11 +53,13 @@ try:
     from .gen_benchmark_pe import importance_sampling
 except (ModuleNotFoundError, ImportError):
     from models import CVAE_model
+    from models import importance_functions
     from gen_benchmark_pe import run
     import plotting
     from plotting import prune_samples
     from models.neural_networks.vae_utils import convert_ra_to_hour_angle
     from gen_benchmark_pe import importance_sampling
+    # from importance_functions import vit_loglike_creation
 
 # Check for optional basemap installation
 try:
@@ -1709,6 +1711,14 @@ def gen_vit_loglikes(params=params,bounds=bounds,fixed_vals=fixed_vals,
     save_vit_loglikes=False,
     z_batch=None):
 
+    # Load parameters files
+    with open(params, 'r') as fp:
+        params = json.load(fp)
+    with open(bounds, 'r') as fp:
+        bounds = json.load(fp)
+    with open(fixed_vals, 'r') as fp:
+        fixed_vals = json.load(fp)
+
     if use_gpu == True:
         print('GPU found')
         os.environ["CUDA_VISIBLE_DEVICES"]=str(params['gpu_num'])
@@ -1719,13 +1729,7 @@ def gen_vit_loglikes(params=params,bounds=bounds,fixed_vals=fixed_vals,
         os.environ["CUDA_VISIBLE_DEVICES"]=''
         config = tf.compat.v1.ConfigProto()
 
-    # Load parameters files
-    with open(params, 'r') as fp:
-        params = json.load(fp)
-    with open(bounds, 'r') as fp:
-        bounds = json.load(fp)
-    with open(fixed_vals, 'r') as fp:
-        fixed_vals = json.load(fp)
+    
 
     # some saving vals:
     ndat=params['ndata']
@@ -1760,7 +1764,6 @@ def gen_vit_loglikes(params=params,bounds=bounds,fixed_vals=fixed_vals,
         for i in range(num_samples):
             vitamin_loglikes[i]=importance_functions.vit_loglike_creation(params, 
                                                                           np.expand_dims(y_data_test[i],axis=0),
-                                                                          y_data_test,
                                                                           model_loc,
                                                                           norm_samples[i,:],
                                                                           z_batch ) # just neecd the single vit sample
@@ -1770,6 +1773,8 @@ def gen_vit_loglikes(params=params,bounds=bounds,fixed_vals=fixed_vals,
             hf.create_dataset('vitamin_loglikes', data=vitamin_loglikes)
             hf.close()
             print('... Saving vitamin loglikes to file')
+
+    return 
         
 
 
@@ -1788,7 +1793,8 @@ if args.gen_samples:
     gen_samples(params,bounds,fixed_vals,model_loc=args.pretrained_loc,
                 test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),save_vit=bool(args.save_vit))
 if args.gen_vit_loglikes:
-    gen_vit_loglikes(model_loc=args.pretrained_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),save_vit_loglikes=True,z_batch=args.z_batch)
+    gen_vit_loglikes(params,bounds,fixed_vals,model_loc=args.pretrained_loc,
+                     num_samples=args.num_samples,use_gpu=bool(args.use_gpu),save_vit_loglikes=True,z_batch=args.z_batch)
 # TODO add if args.gen_vitloglikes...
 
 

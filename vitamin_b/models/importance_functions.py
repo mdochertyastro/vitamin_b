@@ -12,8 +12,9 @@ import scipy
 from scipy.special import logsumexp
 import argparse
 
-from .models.neural_networks import VI_decoder_r2
-from .models.neural_networks import VI_encoder_r1
+from .neural_networks import VI_decoder_r2
+from .neural_networks import VI_encoder_r1
+from .CVAE_model import get_param_index
 # from .neural_networks import VI_encoder_q
 from .neural_networks import batch_manager
 try:
@@ -31,20 +32,11 @@ tfd = tfp.distributions
 SMALL_CONSTANT = 1e-12 # necessary to prevent the division by zero in many operations 
 GAUSS_RANGE = 10.0     # Actual range of truncated gaussian when the ramp is 0
 
-global params; global bounds; global fixed_vals # can use params and bounds inside function without calling it
-
-# Define default location of the parameters files
-params = os.path.join(os.getcwd(), 'params_files', 'params.json')
-bounds = os.path.join(os.getcwd(), 'params_files', 'bounds.json')
-fixed_vals = os.path.join(os.getcwd(), 'params_files', 'fixed_vals.json')
-
-def vit_loglike_creation(
-        # inputs needed for network creation
-        y_data_test, 
-        load_dir,
-        # inputs needed for monte integration 
-        vit_sample_single, # str filepath for the h5py file of vitamin samples TODO - automate this for any number of test sets in vit results dir # number of saved vit samples to get loglikes for, max = num_samples in h5py file (currently 20,782)
-        z_batch):
+def vit_loglike_creation(params,
+                         y_data_processed, 
+                         load_dir,
+                         vit_sample_single, # str filepath for the h5py file of vitamin samples TODO - automate this for any number of test sets in vit results dir # number of saved vit samples to get loglikes for, max = num_samples in h5py file (currently 20,782)
+                         z_batch):
 
     multi_modal = True
 
@@ -52,11 +44,11 @@ def vit_loglike_creation(
     xsh1 = len(params['inf_pars']) #read in from function input variable from [inf params] value in json
     y_normscale = params['y_normscale']
     if params['by_channel'] == True:
-        ysh0 = np.shape(y_data_test)[0]
-        ysh1 = np.shape(y_data_test)[1]
+        ysh0 = np.shape(y_data_processed)[0]
+        ysh1 = np.shape(y_data_processed)[1]
     else:
-        ysh0 = np.shape(y_data_test)[1]
-        ysh1 = np.shape(y_data_test)[2]
+        ysh0 = np.shape(y_data_processed)[1]
+        ysh1 = np.shape(y_data_processed)[2]
     z_dimension = params['z_dimension']
     n_weights_r1 = params['n_weights_r1']
     n_weights_r2 = params['n_weights_r2']
@@ -90,7 +82,7 @@ def vit_loglike_creation(
     pool_strides_q = params['pool_strides_q']
     if n_filters_r1 != None:
         if params['by_channel'] == True:
-            num_det = np.shape(y_data_test)[2]
+            num_det = np.shape(y_data_processed)[2]
         else:
             num_det = ysh0
     else:
@@ -166,8 +158,7 @@ def vit_loglike_creation(
                        tfd.Independent(tfd.TruncatedNormal(r2_xzy_mean_m1,tf.sqrt(temp_var_r2_m1),0,1,validate_args=True,allow_nan_stats=True),reinterpreted_batch_ndims=0),  # m1
             lambda b0: tfd.Independent(tfd.TruncatedNormal(r2_xzy_mean_m2,tf.sqrt(temp_var_r2_m2),0,b0,validate_args=True,allow_nan_stats=True),reinterpreted_batch_ndims=0)],    # m2
             validate_args=True)
-        masses_loglike = mass_dist.log_prob((tf.boolean_mask(samp_ph,m1_mask,axis=1),tf.boolean_mask(samp_ph,m2_mask,axis=1))) # this could be done in batch if recon allowed
-
+        masses_loglike = mass_dist.log_prob((tf.boolean_mask(samp_ph,m1_mask,axis=1),tf.boolean_mask(samp_ph,m2_mask,axis=1))) 
         '''
         TRUNCATED GAUSSIANS
         '''
@@ -221,7 +212,7 @@ def vit_loglike_creation(
         saver_VICI = tf.train.Saver(var_list_VICI)
         saver_VICI.restore(session,load_dir)
 
-    y_data_test_exp = np.tile(y_data_test,(z_batch,1))/y_normscale
+    y_data_test_exp = np.tile(y_data_processed,(z_batch,1))/y_normscale
     y_data_test_exp = y_data_test_exp.reshape(-1,params['ndata'],num_det)
 
     norm_sample_single_tiled = np.tile(norm_sample_single,(z_batch,1))
