@@ -44,6 +44,8 @@ from skopt.utils import use_named_args
 
 try:
     from .models import CVAE_model
+    # from . import importance_functions
+    import importance_functions
     from .gen_benchmark_pe import run
     from . import plotting
     from .plotting import prune_samples
@@ -1689,11 +1691,48 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
             hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}posts_testset{i}.h5py','w')
             for index,name in enumerate(params['inf_pars']):
                 hf.create_dataset(f'{name}_post', data=vit_samples[i,:,index])
+            hf.create_dataset('y_data_test_processed', data=np.expand_dims(y_data_test[i],axis=0))
             hf.close()
             print('... Saving vitamin posteriors to file')
     
 
     return vit_samples
+
+
+def gen_vit_loglikes(
+    model_loc='model_ex/model.ckpt',
+    num_samples=None,
+    use_gpu=True,
+    save_vit_logs=False,
+    z_batch=None):
+
+    if use_gpu == True:
+        print('GPU found')
+        os.environ["CUDA_VISIBLE_DEVICES"]=str(params['gpu_num'])
+        config = tf.compat.v1.ConfigProto()
+        config.gpu_options.allow_growth = True  # Let GPU consumption grow as needed
+    else:
+        print("No GPU found")
+        os.environ["CUDA_VISIBLE_DEVICES"]=''
+        config = tf.compat.v1.ConfigProto()
+
+    # dont need params,bounds,fixed vals as they aree all global inside daughter importance functions script
+
+    '''
+    PSEUDOCOE:
+
+    1. Read in y_data_test 
+    2. Read in vit post results h5py
+    2. Set up loop/concatenate data into (1,7) chunks
+    3. Run vit_loglike_creatioN DAUGHTER FUNCTION (feeding in load dir and y data test, single sample and zbatch) - note load dir and zbbatch come from cmd kwargs 
+    '''
+
+    importance_functions.vit_loglike_creation()
+
+
+    he
+
+
 
 # If running module from command line
 if args.gen_train:
@@ -1707,6 +1746,8 @@ if args.test:
 if args.gen_samples:
     gen_samples(params,bounds,fixed_vals,model_loc=args.pretrained_loc,
                 test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),save_vit=bool(args.save_vit))
+
+# TODO add if args.gen_vitloglikes...
 
 
 '''
