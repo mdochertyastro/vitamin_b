@@ -43,8 +43,7 @@ def vit_loglike_creation(
         y_data_test, 
         load_dir,
         # inputs needed for monte integration 
-        vit_samples_file, # str filepath for the h5py file of vitamin samples
-        nsamp # number of saved vit samples to get loglikes for, max = num_samples in h5py file (currently 20,782)
+        vit_sample_single, # str filepath for the h5py file of vitamin samples TODO - automate this for any number of test sets in vit results dir # number of saved vit samples to get loglikes for, max = num_samples in h5py file (currently 20,782)
         z_batch):
 
     multi_modal = True
@@ -212,8 +211,15 @@ def vit_loglike_creation(
         '''
         Run Session
         '''
+
+        # VARIABLES LISTS
+        var_list_VICI = [var for var in tf.trainable_variables() if var.name.startswith("VI")]
+
+        # INITIALISE AND RUN SESSION
         init = tf.initialize_all_variables()
         session.run(init)
+        saver_VICI = tf.train.Saver(var_list_VICI)
+        saver_VICI.restore(session,load_dir)
 
     y_data_test_exp = np.tile(y_data_test,(z_batch,1))/y_normscale
     y_data_test_exp = y_data_test_exp.reshape(-1,params['ndata'],num_det)
