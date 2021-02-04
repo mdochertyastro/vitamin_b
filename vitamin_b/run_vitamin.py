@@ -1709,38 +1709,38 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     # '''
 
 
-    # vit_loglikes=np.zeros((num_samples))
+    vit_loglikes=np.zeros((num_samples))
 
-    # # z_batch=1000 # specify batch size of monte function
+    # z_batch=1000 # specify batch size of monte function
 
-    # print('########################################################################################')
-    # print(f'#### VITAMIN LOGLIKELIHOODS: number of vitamin samples looped: {num_samples}. z_batchsize = {z_batch} ####')
-    # print('########################################################################################')
+    print('########################################################################################')
+    print(f'#### VITAMIN LOGLIKELIHOODS: number of vitamin samples looped: {num_samples}. z_batchsize = {z_batch} ####')
+    print('########################################################################################')
 
-    # # LOTS OF GRAPH TIMING GOING ON....ignoring for now as not too interested in speed yet
+    # LOTS OF GRAPH TIMING GOING ON....ignoring for now as not too interested in speed yet
 
-    # total_1=time.time()
-    # graph_time_counter=0 # initiate counter
-    # for i in range(num_samples):
-    #     single_loop_1=time.time()
-    #     progress(i+1,num_samples,'')# f'Calculating Loglikelihood for {num_samples} VItamin sample(s)')
+    total_1=time.time()
+    graph_time_counter=0 # initiate counter
+    for i in range(num_samples):
+        single_loop_1=time.time()
+        progress(i+1,num_samples,'')# f'Calculating Loglikelihood for {num_samples} VItamin sample(s)')
         
-    #     vit_loglikes[i], single_graph_time = CVAE_model.monte(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']),
-    #                                                       params['y_normscale'],
-    #                                                       model_loc, norm_samples[i,...],z_batch)
+        vit_loglikes[i], single_graph_time = CVAE_model.monte(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']),
+                                                          params['y_normscale'],
+                                                          model_loc, norm_samples[i,...],z_batch)
         
-    #     single_loop_2=time.time()
-    #     single_loop_time=single_loop_2-single_loop_1
-    #     graph_time_counter=graph_time_counter+single_graph_time
-    #     # print(f'loop{i} = {np.round(single_loop_time,3)}s. graph{i} = {np.round(single_graph_time,3)}s. Loop Overhead = {np.round(single_loop_time-single_graph_time,3)}s. Graph = {np.round((single_graph_time/single_loop_time*100),3)}% & overhead = {np.round(((single_loop_time-single_graph_time)/single_loop_time*100),3)}%')
-    # total_2=time.time()
-    # total_loop_time=total_2-total_1
+        single_loop_2=time.time()
+        single_loop_time=single_loop_2-single_loop_1
+        graph_time_counter=graph_time_counter+single_graph_time
+        # print(f'loop{i} = {np.round(single_loop_time,3)}s. graph{i} = {np.round(single_graph_time,3)}s. Loop Overhead = {np.round(single_loop_time-single_graph_time,3)}s. Graph = {np.round((single_graph_time/single_loop_time*100),3)}% & overhead = {np.round(((single_loop_time-single_graph_time)/single_loop_time*100),3)}%')
+    total_2=time.time()
+    total_loop_time=total_2-total_1
 
-    # # print(f'Full {num_samples} samples loop = {np.round(total_loop_time,3)}s. Sum of graphs = {np.round(graph_time_counter,3)}s. Total overhead = {np.round(total_loop_time-graph_time_counter,3)}s. Graphs are {np.round((graph_time_counter/total_loop_time*100),3)}% & overheads are {np.round(((total_loop_time-graph_time_counter)/total_loop_time*100),3)}%')
-    # # option 2 promising as need 1000 samp but might get away with 100z. chris happy with <~200s
-    # # print(f'loglikelihoods of {num_samples} normalised samples with z_batchsize {args.z_batch} were calculated in {total_loop_time} seconds and are: {vitamin_loglikes, vitamin_loglikes.shape}')
+    # print(f'Full {num_samples} samples loop = {np.round(total_loop_time,3)}s. Sum of graphs = {np.round(graph_time_counter,3)}s. Total overhead = {np.round(total_loop_time-graph_time_counter,3)}s. Graphs are {np.round((graph_time_counter/total_loop_time*100),3)}% & overheads are {np.round(((total_loop_time-graph_time_counter)/total_loop_time*100),3)}%')
+    # option 2 promising as need 1000 samp but might get away with 100z. chris happy with <~200s
+    # print(f'loglikelihoods of {num_samples} normalised samples with z_batchsize {args.z_batch} were calculated in {total_loop_time} seconds and are: {vitamin_loglikes, vitamin_loglikes.shape}')
     
-    # # print(f'Loglikes = {vit_loglikes} of shape{vit_loglikes.shape}')
+    # print(f'Loglikes = {vit_loglikes} of shape{vit_loglikes.shape}')
 
     # '''
     # #######################################################################
