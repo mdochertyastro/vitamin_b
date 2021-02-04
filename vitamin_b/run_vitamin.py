@@ -99,6 +99,8 @@ parser.add_argument("--num_samples", type=int, default=10000, help="number of po
 parser.add_argument("--use_gpu", default=False, help="if True, use gpu")
 parser.add_argument("--importance_sampling", default=False, help="Apply importance sampling to VItamin posterior samples")
 parser.add_argument("--save_vit", default=False, help="if True, save vit samples to h5pyfile")
+parser.add_argument("--z_batch", default=1e3, help="number of montecarlo iterations for vit loglikes")
+parser.add_argument("--gen_vit_loglikes", default=False, help="If True, numerically generate vitamin loglikes from saved samples")
 args = parser.parse_args()
 
 global params; global bounds; global fixed_vals
@@ -1652,6 +1654,7 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
                                                               model_loc)
         print('... Runtime to generate normalised samples is: ' + str(dt))
 
+
         # unnormalize predictions
         for q_idx,q in enumerate(params['inf_pars']):
             par_min = q + '_min'
@@ -1690,8 +1693,8 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
             os.system('mkdir -p %s' % f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz')
             hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}posts_testset{i}.h5py','w')
             for index,name in enumerate(params['inf_pars']):
-                hf.create_dataset(f'{name}_post', data=vit_samples[i,:,index])
-            hf.create_dataset('y_data_test_processed', data=np.expand_dims(y_data_test[i],axis=0))
+                hf.create_dataset(f'{name}_post', data=norm_samples[i,:,index]) # has to be norm samples, that havent been overwritten
+            hf.create_dataset('y_data_test_full', data=y_data_test) # full exact copy in each h5py for each waveform
             hf.close()
             print('... Saving vitamin posteriors to file')
     
@@ -1699,11 +1702,11 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     return vit_samples
 
 
-def gen_vit_loglikes(
-    model_loc='model_ex/model.ckpt',
+def gen_vit_loglikes(params=params,bounds=bounds,fixed_vals=fixed_vals,
+    model_loc='./inverse_model_dir_public_model2/inverse_model.ckpt',
     num_samples=None,
     use_gpu=True,
-    save_vit_logs=False,
+    save_vit_loglikes=False,
     z_batch=None):
 
     if use_gpu == True:
@@ -1716,7 +1719,18 @@ def gen_vit_loglikes(
         os.environ["CUDA_VISIBLE_DEVICES"]=''
         config = tf.compat.v1.ConfigProto()
 
-    # dont need params,bounds,fixed vals as they aree all global inside daughter importance functions script
+    # Load parameters files
+    with open(params, 'r') as fp:
+        params = json.load(fp)
+    with open(bounds, 'r') as fp:
+        bounds = json.load(fp)
+    with open(fixed_vals, 'r') as fp:
+        fixed_vals = json.load(fp)
+
+    # some saving vals:
+    ndat=params['ndata']
+    npar=len(params['rand_pars'])
+    ndet=len(params['det'])
 
     '''
     PSEUDOCOE:
@@ -1727,10 +1741,37 @@ def gen_vit_loglikes(
     3. Run vit_loglike_creatioN DAUGHTER FUNCTION (feeding in load dir and y data test, single sample and zbatch) - note load dir and zbbatch come from cmd kwargs 
     '''
 
-    importance_functions.vit_loglike_creation()
+    # compile all the h5py datasets here...
 
+    norm_samples=np.zeros([num_samples,len(params['inf_pars'])])
 
-    he
+    # will eventually extend to a directory with 'r' individual waveform files then num_timeseries can just be number of files
+    hf = h5py.File('/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/vitamin_results/3det_9pars_256Hz/20782posts_testset0.h5py', 'r')
+    for i in range(num_samples):
+        for index, name in enumerate(params['inf_pars']):
+            norm_samples[i,index]=hf[f'{name}_post'][i]
+    y_data_test=hf['y_data_test_full']
+
+    
+    num_timeseries=y_data_test.shape[0]
+
+    for j in range(num_timeseries):
+        vitamin_loglikes=np.zeros([num_samples])
+        for i in range(num_samples):
+            vitamin_loglikes[i]=importance_functions.vit_loglike_creation(params, 
+                                                                          np.expand_dims(y_data_test[i],axis=0),
+                                                                          y_data_test,
+                                                                          model_loc,
+                                                                          norm_samples[i,:],
+                                                                          z_batch ) # just neecd the single vit sample
+
+        if save_vit_loglikes is True:
+            hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}loglikes_{z_batch}zbatch_testset{i}.h5py','w')
+            hf.create_dataset('vitamin_loglikes', data=vitamin_loglikes)
+            hf.close()
+            print('... Saving vitamin loglikes to file')
+        
+
 
 
 
@@ -1746,7 +1787,8 @@ if args.test:
 if args.gen_samples:
     gen_samples(params,bounds,fixed_vals,model_loc=args.pretrained_loc,
                 test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),save_vit=bool(args.save_vit))
-
+if args.gen_vit_loglikes:
+    gen_vit_loglikes(model_loc=args.pretrained_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),save_vit_loglikes=True,z_batch=args.z_batch)
 # TODO add if args.gen_vitloglikes...
 
 
