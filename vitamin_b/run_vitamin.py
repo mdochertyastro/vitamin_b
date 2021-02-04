@@ -96,7 +96,7 @@ parser.add_argument("--gen_samples", default=False, help="If True, generate samp
 parser.add_argument("--num_samples", type=int, default=10000, help="number of posterior samples to generate")
 parser.add_argument("--use_gpu", default=False, help="if True, use gpu")
 parser.add_argument("--importance_sampling", default=False, help="Apply importance sampling to VItamin posterior samples")
-parser.add_argument("--z_batch", type=int, default=1000, help="number of monte z samples")
+parser.add_argument("--save_vit", default=False, help="if True, save vit samples to h5pyfile")
 args = parser.parse_args()
 
 global params; global bounds; global fixed_vals
@@ -1486,7 +1486,7 @@ def test(params=params,bounds=bounds,fixed_vals=fixed_vals,use_gpu=False):
 
     return
 
-def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='model_ex/model.ckpt',test_set='test_waveforms/',num_samples=None,plot_corner=True,use_gpu=False,z_batch=None):
+def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='model_ex/model.ckpt',test_set='test_waveforms/',num_samples=None,plot_corner=True,use_gpu=False,save_vit=False):
     """ Function to generate VItamin samples given a trained model
 
     Parameters
@@ -1682,13 +1682,14 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
 
     print('... All posterior samples generated for all waveforms in test sample directory!')
     
-    # need to automate this later to allow multiple test_sets:
-    os.system('mkdir -p %s' % 'vitamin_results')
-    hf=h5py.File(f'vitamin_results/{num_samples}posts.h5py','w')
+    if save_vit is True:
+        # need to automate this later to allow multiple test_sets:
+        os.system('mkdir -p %s' % 'vitamin_results')
+        hf=h5py.File(f'vitamin_results/{num_samples}posts.h5py','w')
     
-    for index,name in enumerate(params['inf_pars']):
-        hf.create_dataset(name, data=vit_samples[0,index])
-    hf.close()
+        for index,name in enumerate(params['inf_pars']):
+            hf.create_dataset(name, data=vit_samples[0,index])
+        hf.close()
 
     
 
@@ -1705,4 +1706,13 @@ if args.test:
     test(params,bounds,fixed_vals,use_gpu=bool(args.use_gpu))
 if args.gen_samples:
     gen_samples(params,bounds,fixed_vals,model_loc=args.pretrained_loc,
-                test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu))
+                test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),save_vit=bool(args.save_vit))
+
+
+'''
+For future reference:
+
+python run_vitamin.py --gen_samples True --use_gpu True --pretrained_loc ./inverse_model_dir_public_model2/inverse_model.ckpt --test_set_loc ./test_sets/all_4_samplers/test_waveforms/
+
+
+'''
