@@ -35,7 +35,7 @@ GAUSS_RANGE = 10.0     # Actual range of truncated gaussian when the ramp is 0
 def vit_loglike_creation(params,
                          y_data_processed, 
                          load_dir,
-                         vit_sample_single, # str filepath for the h5py file of vitamin samples TODO - automate this for any number of test sets in vit results dir # number of saved vit samples to get loglikes for, max = num_samples in h5py file (currently 20,782)
+                         norm_sample_single, # str filepath for the h5py file of vitamin samples TODO - automate this for any number of test sets in vit results dir # number of saved vit samples to get loglikes for, max = num_samples in h5py file (currently 20,782)
                          z_batch):
 
     multi_modal = True

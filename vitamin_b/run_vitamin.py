@@ -101,7 +101,7 @@ parser.add_argument("--num_samples", type=int, default=10000, help="number of po
 parser.add_argument("--use_gpu", default=False, help="if True, use gpu")
 parser.add_argument("--importance_sampling", default=False, help="Apply importance sampling to VItamin posterior samples")
 parser.add_argument("--save_vit", default=False, help="if True, save vit samples to h5pyfile")
-parser.add_argument("--z_batch", default=1e3, help="number of montecarlo iterations for vit loglikes")
+parser.add_argument("--z_batch", type=int, default=1e3, help="number of montecarlo iterations for vit loglikes")
 parser.add_argument("--gen_vit_loglikes", default=False, help="If True, numerically generate vitamin loglikes from saved samples")
 args = parser.parse_args()
 
