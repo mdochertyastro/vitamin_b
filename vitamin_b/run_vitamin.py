@@ -1486,7 +1486,7 @@ def test(params=params,bounds=bounds,fixed_vals=fixed_vals,use_gpu=False):
 
     return
 
-def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='model_ex/model.ckpt',test_set='test_waveforms/',num_samples=None,plot_corner=True,use_gpu=False,save_vit=False):
+def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='model_ex/model.ckpt',test_set='test_waveforms/',num_samples=None,plot_corner=False,use_gpu=True,save_vit=False):
     """ Function to generate VItamin samples given a trained model
 
     Parameters
@@ -1678,19 +1678,19 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
             plt.savefig('./vitamin_corner_timeseries-%d.png' % i)
             plt.close()
             print('... Saved corner plot to -> ./vitamin_corner_timeseries-%d.png' % i)
-            print()
 
-    print('... All posterior samples generated for all waveforms in test sample directory!')
-    
-    if save_vit is True:
-        # need to automate this later to allow multiple test_sets:
-        os.system('mkdir -p %s' % 'vitamin_results')
-        hf=h5py.File(f'vitamin_results/{num_samples}posts.h5py','w')
-    
-        for index,name in enumerate(params['inf_pars']):
-            hf.create_dataset(name, data=vit_samples[0,index])
-        hf.close()
+        #some saving vals:
+        ndat=params['ndata']
+        npar=len(params['rand_pars'])
+        ndet=len(params['det'])
 
+        if save_vit is True:
+            os.system('mkdir -p %s' % f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz')
+            hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}posts_testset{i}.h5py','w')
+            for index,name in enumerate(params['inf_pars']):
+                hf.create_dataset(f'{name}_post', data=vit_samples[i,:,index])
+            hf.close()
+            print('... Saving vitamin posteriors to file')
     
 
     return vit_samples
