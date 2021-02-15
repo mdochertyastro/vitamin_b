@@ -576,7 +576,7 @@ def train(params, x_data, y_data, x_data_test, y_data_test, y_data_test_noisefre
             von_mises = tfp.distributions.VonMises(
                           loc=2.0*np.pi*(tf.reshape(r2_xzy_mean_vonmise,[-1,vonmise_len])),   # remap 0>1 mean onto -pi->pi range
                           concentration=con)
-            reconstr_loss_vonmise = tf.reduce_sum(von_mises.log_prob(2.0*np.pi*(tf.reshape(tf.boolean_mask(x_ph,vonmise_mask,axis=1),[-1,vonmise_len])),axis=1)   # 2pi is the von mises input range
+            reconstr_loss_vonmise = tf.reduce_sum(von_mises.log_prob(2.0*np.pi*(tf.reshape(tf.boolean_mask(x_ph,vonmise_mask,axis=1),[-1,vonmise_len]))),axis=1)   # 2pi is the von mises input range
             
             reconstr_loss_vonmise = reconstr_loss_vonmise[:,0] + reconstr_loss_vonmise[:,1]
 

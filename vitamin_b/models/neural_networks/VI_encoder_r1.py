@@ -117,7 +117,7 @@ class VariationalAutoencoder(object):
                 tf.summary.histogram(bias_name, all_weights['VI_encoder_r1'][bias_name])
                 fc_input_size = self.n_weights[i]
             all_weights['VI_encoder_r1']['w_loc'] = tf.Variable(vae_utils.xavier_init(self.n_weights[-1], self.n_output*self.n_modes),dtype=tf.float32)
-            all_weights['VI_encoder_r1']['b_loc'] = tf.Variable(tf.random.normal([self.n_output*self.n_modes], 0.1., dtype=tf.float32), dtype=tf.float32)
+            all_weights['VI_encoder_r1']['b_loc'] = tf.Variable(tf.random.normal([self.n_output*self.n_modes], 0.1, dtype=tf.float32), dtype=tf.float32)
             tf.summary.histogram('w_loc', all_weights['VI_encoder_r1']['w_loc'])
             tf.summary.histogram('b_loc', all_weights['VI_encoder_r1']['b_loc'])
             all_weights['VI_encoder_r1']['w_scale_diag'] = tf.Variable(vae_utils.xavier_init(self.n_weights[-1], self.n_output*self.n_modes),dtype=tf.float32)

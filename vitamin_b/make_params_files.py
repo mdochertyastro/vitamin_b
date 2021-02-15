@@ -16,9 +16,9 @@ fixed_vals = {'mass_1':50.0,
         '__definition__geocent_time': 'time of coalescence fixed value',
         'phase':0.0,
         '__definition__phase': 'phase fixed value',
-        'ra':1.375,
+        'ra':0.0,
         '__definition__ra': 'right ascension fixed value',
-        'dec':-1.2108,
+        'dec':0.0,
         '__definition__dec': 'declination fixed value',
         'psi':0.0,
         '__definition__psi': 'psi fixed value',
@@ -80,14 +80,13 @@ y_normscale = 36.0
 # Main tunable variables
 ##########################
 ndata = 256                                                                     
-det=['H1','L1','V1']                                                            
+det=['H1']                                                            
 psd_files=[] 
 
 # full param space
 
-rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase',
-                'theta_jn','psi','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec']                                   
-inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','a_1','a_2','tilt_1','tilt_2','phi_12','phi_jl','ra','dec'] 
+rand_pars = ['mass_1','mass_2','luminosity_distance','geocent_time','phase','theta_jn','psi']                                   
+inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','psi'] 
 
 # param space sub-set
 
@@ -105,9 +104,9 @@ batch_norm=True
 n_filters_r1 = [33, 33, 33]                                                        
 n_filters_r2 = [33, 33, 33]                                                        
 n_filters_q = [33, 33, 33]                                                         
-filter_size_r1 = [5,8,11]                                                         
-filter_size_r2 = [5,8,11]                                                        
-filter_size_q = [5,8,11]                                                          
+filter_size_r1 = [3,8,11]                                                         
+filter_size_r2 = [3,8,11]                                                        
+filter_size_q = [3,8,11]                                                          
 drate = 0.2                                                                    
 maxpool_r1 = [1,2,1]                                                             
 conv_strides_r1 = [1,1,1]                                                        
@@ -130,7 +129,7 @@ n_weights_q = [n_fc,n_fc]
 #############################
 # optional tunable variables
 #############################
-run_label = 'public_model'#'demo_%ddet_%dpar_%dHz_hour_angle_with_late_kl_start' % (len(det),len(rand_pars),ndata) 
+run_label = 'chris_new_model'#'demo_%ddet_%dpar_%dHz_hour_angle_with_late_kl_start' % (len(det),len(rand_pars),ndata) 
 
 # 1024 Hz label
 #bilby_results_label = 'weichangfeng_theta_jn_issue'                                             
@@ -202,7 +201,7 @@ def get_params():
         __definition__load_plot_data='Use plotting data which has already been generated',
         doPE = True,                                                            
         __definition__doPE='if True then do bilby PE when generating new testing samples',
-        gpu_num=5,                                                              
+        gpu_num=0,                                                              
         __definition__gpu_num='gpu number run is running on',
         ndata = ndata,                                                          
         __definition__ndata='sampling frequency',
