@@ -347,8 +347,8 @@ def run(params, y_data_test, siz_x_data, y_normscale, load_dir):
         # draw from r2(x|z,y) - the vonmises part
         temp_var_r2_vonmise = SMALL_CONSTANT + tf.exp(r2_xzy_log_sig_sq_vonmise)
         con = tf.reshape(tf.math.reciprocal(temp_var_r2_vonmise),[-1,vonmise_len])   # modelling wrapped scale output as log variance
-        von_mises = tfp.distributions.VonMises(loc=2.0*np.pi*(r2_xzy_mean_vonmise-0.5), concentration=con)
-        r2_xzy_samp_vonmise = tf.reshape(von_mises.sample()/(2.0*np.pi) + 0.5,[-1,vonmise_len])   # sample from the von mises distribution and shift and scale from -pi-pi to 0-1
+        von_mises = tfp.distributions.VonMises(loc=2.0*np.pi*(r2_xzy_mean_vonmise), concentration=con)
+        r2_xzy_samp_vonmise = tf.reshape(tf.math.floor(von_mises.sample(),(2.0*np.pi))/(2.0*np.pi),[-1,vonmise_len])   # sample from the von mises distribution and shift and scale from -pi-pi to 0-1
 
         # draw from r2(x|z,y) - the von mises Fisher 
         temp_var_r2_sky = SMALL_CONSTANT + tf.exp(r2_xzy_log_sig_sq_sky)
@@ -574,9 +574,9 @@ def train(params, x_data, y_data, x_data_test, y_data_test, y_data_test_noisefre
             temp_var_r2_vonmise = SMALL_CONSTANT + tf.exp(r2_xzy_log_sig_sq_vonmise)
             con = tf.reshape(tf.math.reciprocal(temp_var_r2_vonmise),[-1,vonmise_len])   # modelling wrapped scale output as log variance - convert to concentration
             von_mises = tfp.distributions.VonMises(
-                          loc=2.0*np.pi*(tf.reshape(r2_xzy_mean_vonmise,[-1,vonmise_len])-0.5),   # remap 0>1 mean onto -pi->pi range
+                          loc=2.0*np.pi*(tf.reshape(r2_xzy_mean_vonmise,[-1,vonmise_len])),   # remap 0>1 mean onto -pi->pi range
                           concentration=con)
-            reconstr_loss_vonmise = von_mises.log_prob(2.0*np.pi*(tf.reshape(tf.boolean_mask(x_ph,vonmise_mask,axis=1),[-1,vonmise_len]) - 0.5))   # 2pi is the von mises input range
+            reconstr_loss_vonmise = tf.reduce_sum(von_mises.log_prob(2.0*np.pi*(tf.reshape(tf.boolean_mask(x_ph,vonmise_mask,axis=1),[-1,vonmise_len])),axis=1)   # 2pi is the von mises input range
             
             reconstr_loss_vonmise = reconstr_loss_vonmise[:,0] + reconstr_loss_vonmise[:,1]
 
