@@ -1134,7 +1134,7 @@ def run(sampling_frequency=256.0,
                     for file in file_type:
                         os.remove(file)
                 print('finished running pe')
-                return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr,uufd
+                return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr,uufd # add in the vars needed to recreate bilby run
 
             run_startt = time.time()
 
