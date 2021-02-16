@@ -134,7 +134,7 @@ run_label = 'chris_new_model'#'demo_%ddet_%dpar_%dHz_hour_angle_with_late_kl_sta
 # 1024 Hz label
 #bilby_results_label = 'weichangfeng_theta_jn_issue'                                             
 # 256 Hz label
-bilby_results_label = 'all_4_samplers' # do it at 256Hz
+bilby_results_label = 'dynesty_forced_phase_margin' # do it at 256Hz
 
 r = 1                                                          
 pe_test_num = 256                                                               

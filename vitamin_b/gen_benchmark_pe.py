@@ -1044,10 +1044,10 @@ def run(sampling_frequency=256.0,
         else:
             priors['theta_jn'] = fixed_vals['theta_jn']
 
-        if np.any([r=='phase' for r in inf_pars]):
-            priors['phase'] = bilby.gw.prior.Uniform(name='phase', minimum=bounds['phase_min'], maximum=bounds['phase_max'], boundary='periodic')
-        else:
-            priors['phase'] = fixed_vals['phase']
+        # if np.any([r=='phase' for r in inf_pars]): # should I hard code phase as uniform if its in rand pars instead of inf pars
+        priors['phase'] = bilby.gw.prior.Uniform(name='phase', minimum=bounds['phase_min'], maximum=bounds['phase_max'], boundary='periodic')
+        # else:
+        #     priors['phase'] = fixed_vals['phase']
 
         if np.any([r=='luminosity_distance' for r in inf_pars]):
             priors['luminosity_distance'] =  bilby.gw.prior.Uniform(name='luminosity_distance', minimum=bounds['luminosity_distance_min'], maximum=bounds['luminosity_distance_max'], unit='Mpc')
@@ -1056,10 +1056,11 @@ def run(sampling_frequency=256.0,
 
         # Initialise the likelihood by passing in the interferometer data (ifos) and
         # the waveform generator
-        if not use_real_events and np.any([r=='phase' for r in inf_pars]):
-            phase_marginalization=True
-        else:
-            phase_marginalization=False
+        # if not use_real_events and np.any([r=='phase' for r in inf_pars]):
+        #     phase_marginalization=True
+        # else:
+        #     phase_marginalization=False
+        phase_marginalization=True # hard coded
         likelihood = bilby.gw.GravitationalWaveTransient(
             interferometers=ifos, waveform_generator=waveform_generator, phase_marginalization=phase_marginalization,
 
@@ -1088,6 +1089,7 @@ def run(sampling_frequency=256.0,
             hf.create_dataset('y_data_noisy', data=test_samples_noisy)
             hf.create_dataset('rand_pars', data=np.string_(params['rand_pars']))
             hf.create_dataset('snrs', data=snr)
+            # might want to add uufd here?
             hf.close()
 
         # look for dynesty sampler option
