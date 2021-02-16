@@ -1099,7 +1099,8 @@ def run(sampling_frequency=256.0,
             result = bilby.run_sampler(
                 likelihood=likelihood, priors=priors, sampler='dynesty', npoints=1000, nact=50, npool=8, dlogz=0.1,
                 injection_parameters=injection_parameters, outdir=out_dir+'_'+samplers[-1], label=label,
-                save='hdf5', plot=True)
+                # save='hdf5', 
+                plot=True)
             run_endt = time.time()
 
             # save test sample waveform
