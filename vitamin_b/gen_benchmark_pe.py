@@ -238,7 +238,7 @@ def gen_template(duration,
 
     # Set up interferometers. These default to their design
     # sensitivity
-    if use_real_det_noise: # If true, get real noise
+    if use_real_det_noise: # If true, get real noise - defaulted no
         ifos=[]
         for det in pars['det']:
             ifos.append(bilby.gw.detector.get_interferometer_with_open_data(det, pars['geocent_time'], 
@@ -962,13 +962,22 @@ def run(sampling_frequency=256.0,
 
         # if not doing PE then return signal data
         if not do_pe:
-            return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr,uufd
+            return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr #,uufd
 
         try:
             bilby.core.utils.setup_logger(outdir=out_dir, label=label)
         except Exception as e:
             print(e)
             pass
+
+        #create bilby data file
+        hf = h5py.File('bilby_params.h5py', 'w')
+        # add datasets for bilby likelihood recreation
+        hf.create_dataset('uufd', data=uufd)
+        hf.create_dataset('ifos', data=ifos)
+        hf.create_dataset('waveform_generator', data=waveform_generator)
+
+
 
         # Set up a PriorDict, which inherits from dict.
         priors = bilby.gw.prior.BBHPriorDict()
@@ -1118,6 +1127,7 @@ def run(sampling_frequency=256.0,
                         print('saving PE samples for parameter {}'.format(q))
                         hf.create_dataset(name, data=np.array(qi))
             hf.create_dataset('runtime', data=(run_endt - run_startt))
+            
             hf.close()
 
             # return samples if not doing a condor run
@@ -1134,7 +1144,7 @@ def run(sampling_frequency=256.0,
                     for file in file_type:
                         os.remove(file)
                 print('finished running pe')
-                return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr,uufd # add in the vars needed to recreate bilby run
+                return test_samples_noisy,test_samples_noisefree,np.array([temp]),snr # ,uufd # add in the vars needed to recreate bilby run
 
             run_startt = time.time()
 
