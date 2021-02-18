@@ -471,7 +471,7 @@ def train(params, x_data, y_data, x_data_val, y_data_val, x_data_test, y_data_te
     n_weights_r2 = params['n_weights_r2']
     n_weights_q = params['n_weights_q']
     n_modes = params['n_modes']
-    n_modes_q = params['n_modes_q']
+    # n_modes_q = params['n_modes_q']
     n_hlayers_r1 = len(params['n_weights_r1'])
     n_hlayers_r2 = len(params['n_weights_r2'])
     n_hlayers_q = len(params['n_weights_q'])

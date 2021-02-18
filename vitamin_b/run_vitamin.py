@@ -734,7 +734,7 @@ def gen_test(params=params,bounds=bounds,fixed_vals=fixed_vals):
 
     # Make testing samples
     for i in range(params['r']):
-        temp_noisy, temp_noisefree, temp_pars, temp_snr, uufd = run(sampling_frequency=params['ndata']/params['duration'], # lets return more things here
+        temp_noisy, temp_noisefree, temp_pars, temp_snr = run(sampling_frequency=params['ndata']/params['duration'], # lets return more things here
                                                       duration=params['duration'],
                                                       N_gen=1,
                                                       ref_geocent_time=params['ref_geocent_time'],

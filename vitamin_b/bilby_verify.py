@@ -66,6 +66,10 @@ priors['phase'] = bilby.gw.prior.Uniform(name='phase', minimum=bounds['phase_min
 
 ifos = bilby.gw.detector.InterferometerList(['H1'])
 for ifo_ind, ifo in enumerate(ifos):
+
+    # ifo.minimum_frequency = 20
+    # ifo.maximum_frequency = sampling_frequency/2. # these 2 lines dont make a difference, they are redundant
+
     ifo.set_strain_data_from_frequency_domain_strain(
         uufd[ifo_ind,:], sampling_frequency=sampling_frequency, # might change uufd to its squeezed form then dont need to index first axis!
         duration=duration, start_time = start_time
@@ -88,12 +92,14 @@ bilby_loglikes=np.zeros([num_samples])
 for i in range(num_samples):
 
     likelihood_parameters = dict(
+        # inf pars
         mass_1=mass_1_samples[i], # might want to use placeholders inside tf graph, we'll see
         mass_2=mass_2_samples[i],
         luminosity_distance=luminosity_distance_samples[i],
         geocent_time=geocent_time_samples[i],
         theta_jn=theta_jn_samples[i],
         psi=psi_samples[i],
+        # rand pars/fixed vals (all9 of these are 0)
         ra=fixed_vals['ra'], # option to simplify is to get rid of ra and dec. 
         dec=fixed_vals['dec'], # not flat prior, sinusoid prior (try convert to a space that emulates flat prior somehow)
         phase=fixed_vals['phase'], # can set to any float and it doesn't change the overall value due to phase marginalisation.
@@ -102,7 +108,7 @@ for i in range(num_samples):
                 
 
     likelihood.parameters = likelihood_parameters
-    bilby_loglike_single = likelihood.log_likelihood()
+    bilby_loglike_single = likelihood.log_likelihood_ratio()
     bilby_loglikes[i]=bilby_loglike_single
 
 

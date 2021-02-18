@@ -971,11 +971,11 @@ def run(sampling_frequency=256.0,
             pass
 
         #create bilby data file
-        hf = h5py.File('bilby_params.h5py', 'w')
-        # add datasets for bilby likelihood recreation
-        hf.create_dataset('uufd', data=uufd)
-        hf.create_dataset('ifos', data=ifos)
-        hf.create_dataset('waveform_generator', data=waveform_generator)
+        # hf = h5py.File('bilby_params.h5py', 'w')
+        # # add datasets for bilby likelihood recreation
+        # hf.create_dataset('uufd', data=uufd)
+        # hf.create_dataset('ifos', data=ifos)
+        # hf.create_dataset('waveform_generator', data=waveform_generator)
 
 
 
@@ -1127,7 +1127,7 @@ def run(sampling_frequency=256.0,
                         print('saving PE samples for parameter {}'.format(q))
                         hf.create_dataset(name, data=np.array(qi))
             hf.create_dataset('runtime', data=(run_endt - run_startt))
-            
+            hf.create_dataset('uufd', data=uufd)
             hf.close()
 
             # return samples if not doing a condor run

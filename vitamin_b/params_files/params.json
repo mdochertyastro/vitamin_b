@@ -94,19 +94,19 @@
     ],
     "__definition__n_filters_q": "number of convolutional filters to use in q network  (must be divisible by 3)",
     "filter_size_r1": [
-        3,
+        5,
         8,
         11
     ],
     "__definition__filter_size_r1": "size of convolutional fitlers in r1 network",
     "filter_size_r2": [
-        3,
+        5,
         8,
         11
     ],
     "__definition__filter_size_r2": "size of convolutional filters in r2 network",
     "filter_size_q": [
-        3,
+        5,
         8,
         11
     ],
