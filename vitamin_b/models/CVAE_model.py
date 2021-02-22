@@ -347,19 +347,22 @@ def run(params, y_data_test, siz_x_data, y_normscale, load_dir):
         # draw from r2(x|z,y) - the vonmises part
         temp_var_r2_vonmise = SMALL_CONSTANT + tf.exp(r2_xzy_log_sig_sq_vonmise)
         con = tf.reshape(tf.math.reciprocal(temp_var_r2_vonmise),[-1,vonmise_len])   # modelling wrapped scale output as log variance
-        von_mises = tfp.distributions.VonMises(loc=2.0*np.pi*(r2_xzy_mean_vonmise-0.5), concentration=con)
-        r2_xzy_samp_vonmise = tf.reshape(von_mises.sample()/(2.0*np.pi) + 0.5,[-1,vonmise_len])   # sample from the von mises distribution and shift and scale from -pi-pi to 0-1
+        von_mises = tfp.distributions.VonMises(loc=2.0*np.pi*r2_xzy_mean_vonmise, concentration=con)
+        r2_xzy_samp_vonmise = tf.reshape(tf.math.floormod(von_mises.sample(),(2.0*np.pi))/(2.0*np.pi),[-1,vonmise_len])   # sample from the von mises distribution and shift and scale from -pi-pi to 0-1
 
-        # draw from r2(x|z,y) - the von mises Fisher 
-        temp_var_r2_sky = SMALL_CONSTANT + tf.exp(r2_xzy_log_sig_sq_sky)
-        con = tf.reshape(tf.math.reciprocal(temp_var_r2_sky),[bs_ph])   # modelling wrapped scale output as log variance - only 1 concentration parameter for all sky
-        von_mises_fisher = tfp.distributions.VonMisesFisher(
-                          mean_direction=tf.math.l2_normalize(tf.reshape(r2_xzy_mean_sky,[bs_ph,3]),axis=1),
-                          concentration=con)   # define p_vm(2*pi*mu,con=1/sig^2)
-        xyz = tf.reshape(von_mises_fisher.sample(),[bs_ph,3])          # sample the distribution
-        samp_ra = tf.math.floormod(tf.atan2(tf.slice(xyz,[0,1],[-1,1]),tf.slice(xyz,[0,0],[-1,1])),2.0*np.pi)/(2.0*np.pi)   # convert to the rescaled 0->1 RA from the unit vector
-        samp_dec = (tf.asin(tf.slice(xyz,[0,2],[-1,1])) + 0.5*np.pi)/np.pi                       # convert to the rescaled 0->1 dec from the unit vector
-        r2_xzy_samp_sky = tf.reshape(tf.concat([samp_ra,samp_dec],axis=1),[bs_ph,2])             # group the sky samples
+        if sky_len>0:
+            # draw from r2(x|z,y) - the von mises Fisher 
+            temp_var_r2_sky = SMALL_CONSTANT + tf.exp(r2_xzy_log_sig_sq_sky)
+            con = tf.reshape(tf.math.reciprocal(temp_var_r2_sky),[bs_ph])   # modelling wrapped scale output as log variance - only 1 concentration parameter for all sky
+            von_mises_fisher = tfp.distributions.VonMisesFisher(
+                              mean_direction=tf.math.l2_normalize(tf.reshape(r2_xzy_mean_sky,[bs_ph,3]),axis=1),
+                              concentration=con)   # define p_vm(2*pi*mu,con=1/sig^2)
+            xyz = tf.reshape(von_mises_fisher.sample(),[bs_ph,3])          # sample the distribution
+            samp_ra = tf.math.floormod(tf.atan2(tf.slice(xyz,[0,1],[-1,1]),tf.slice(xyz,[0,0],[-1,1])),2.0*np.pi)/(2.0*np.pi)   # convert to the rescaled 0->1 RA from the unit vector
+            samp_dec = (tf.asin(tf.slice(xyz,[0,2],[-1,1])) + 0.5*np.pi)/np.pi                       # convert to the rescaled 0->1 dec from the unit vector
+            r2_xzy_samp_sky = tf.reshape(tf.concat([samp_ra,samp_dec],axis=1),[bs_ph,2])             # group the sky samples
+        else:
+            r2_xzy_samp_sky = tf.zeros([bs_ph,0], tf.float32)
 
         # combine the samples
         r2_xzy_samp = tf.concat([r2_xzy_samp_gauss,r2_xzy_samp_vonmise,r2_xzy_samp_masses,r2_xzy_samp_sky],axis=1)
@@ -372,7 +375,7 @@ def run(params, y_data_test, siz_x_data, y_normscale, load_dir):
         # INITIALISE AND RUN SESSION
         init = tf.initialize_all_variables()
         session.run(init)
-        saver_VICI = tf.train.Saver(var_list_VICI)
+        saver_VICI = tf.train.Saver(tf.global_variables())
         saver_VICI.restore(session,load_dir)
 
     # ESTIMATE TEST SET RECONSTRUCTION PER-PIXEL APPROXIMATE MARGINAL LIKELIHOOD and draw from q(x|y)
@@ -470,6 +473,9 @@ def train(params, x_data, y_data, x_data_test, y_data_test, y_data_test_noisefre
     m1_mask, m1_idx_mask, m1_len = get_param_index(params['inf_pars'],['mass_1'])
     m2_mask, m2_idx_mask, m2_len = get_param_index(params['inf_pars'],['mass_2'])
     idx_mask = np.argsort(gauss_idx_mask + vonmise_idx_mask + m1_idx_mask + m2_idx_mask + sky_idx_mask) # + dist_idx_mask)
+
+    # print(vonmise_mask, vonmise_idx_mask, params['inf_pars'])
+    # exit()
 
     graph = tf.Graph()
     session = tf.Session(graph=graph)
@@ -572,22 +578,42 @@ def train(params, x_data, y_data, x_data_test, y_data_test, y_data_test_noisefre
         # COST FROM RECONSTRUCTION - Von Mises parts for single parameters that wrap over 2pi
         if vonmise_len>0:
             temp_var_r2_vonmise = SMALL_CONSTANT + tf.exp(r2_xzy_log_sig_sq_vonmise)
-            con = tf.reshape(tf.math.reciprocal(temp_var_r2_vonmise),[-1,vonmise_len])   # modelling wrapped scale output as log variance - convert to concentration
+            print(temp_var_r2_vonmise.shape)
+            con_vonmise = tf.reshape(tf.math.reciprocal(temp_var_r2_vonmise),[bs_ph,vonmise_len])   # modelling wrapped scale output as log variance - convert to concentration
             von_mises = tfp.distributions.VonMises(
-                          loc=2.0*np.pi*(tf.reshape(r2_xzy_mean_vonmise,[-1,vonmise_len])-0.5),   # remap 0>1 mean onto -pi->pi range
-                          concentration=con)
-            reconstr_loss_vonmise = von_mises.log_prob(2.0*np.pi*(tf.reshape(tf.boolean_mask(x_ph,vonmise_mask,axis=1),[-1,vonmise_len]) - 0.5))   # 2pi is the von mises input range
-            
-            reconstr_loss_vonmise = reconstr_loss_vonmise[:,0] + reconstr_loss_vonmise[:,1]
+                          loc=2.0*np.pi*tf.reshape(r2_xzy_mean_vonmise,[bs_ph,vonmise_len]),   # remap 0>1 mean onto 0->2pi range
+                          concentration=con_vonmise)
+            reconstr_loss_vonmise = tf.reduce_sum(von_mises.log_prob(2.0*np.pi*tf.reshape(tf.boolean_mask(x_ph,vonmise_mask,axis=1),[-1,vonmise_len])),axis=1)   # 2pi is the von mises input range
 
             # computing Gaussian likelihood for von mises parameters to be faded away with the ramp
-            gauss_vonmises = tfp.distributions.MultivariateNormalDiag(
-                         loc=r2_xzy_mean_vonmise,
-                         scale_diag=tf.sqrt(temp_var_r2_vonmise))
-            reconstr_loss_gauss_vonmise = gauss_vonmises.log_prob(tf.boolean_mask(x_ph,vonmise_mask,axis=1))        
+            gauss_vonmises = tfd.TruncatedNormal(r2_xzy_mean_vonmise,
+                                                 tf.sqrt(temp_var_r2_vonmise),
+                                                 -GAUSS_RANGE*(1.0-ramp),GAUSS_RANGE*(1.0-ramp) + 1.0)
+            reconstr_loss_gauss_vonmise = tf.reduce_sum(tf.reshape(gauss_vonmises.log_prob(tf.boolean_mask(x_ph,vonmise_mask,axis=1)),[-1,vonmise_len]),axis=1)        
             reconstr_loss_vonmise = ramp*reconstr_loss_vonmise + (1.0-ramp)*reconstr_loss_gauss_vonmise    # start with a Gaussian model and fade in the true vonmises
         else:
             reconstr_loss_vonmise = 0.0
+        tf.debugging.check_numerics(reconstr_loss_vonmise, message='reconstr_loss_vonmise is nan or inf')
+        
+        
+        # if vonmise_len>0:
+        #     temp_var_r2_vonmise = SMALL_CONSTANT + tf.exp(r2_xzy_log_sig_sq_vonmise)
+        #     con = tf.reshape(tf.math.reciprocal(temp_var_r2_vonmise),[-1,vonmise_len])   # modelling wrapped scale output as log variance - convert to concentration
+        #     von_mises = tfp.distributions.VonMises(
+        #                   loc=2.0*np.pi*(tf.reshape(r2_xzy_mean_vonmise,[-1,vonmise_len])-0.5),   # remap 0>1 mean onto -pi->pi range
+        #                   concentration=con)
+        #     reconstr_loss_vonmise = tf.reduce_sum(von_mises.log_prob(2.0*np.pi*tf.reshape(tf.boolean_mask(x_ph,vonmise_mask,axis=1),[-1,vonmise_len])),axis=1)   # 2pi is the von mises input range
+            
+            # reconstr_loss_vonmise = reconstr_loss_vonmise[:,0] + reconstr_loss_vonmise[:,1]
+
+            # computing Gaussian likelihood for von mises parameters to be faded away with the ramp
+        #     gauss_vonmises = tfp.distributions.Mul2tivariateNormalDiag(
+        #                  loc=r2_xzy_mean_vonmise,
+        #                  scale_diag=tf.sqrt(temp_var_r2_vonmise))
+        #     reconstr_loss_gauss_vonmise = gauss_vonmises.log_prob(tf.boolean_mask(x_ph,vonmise_mask,axis=1))        
+        #     reconstr_loss_vonmise = ramp*reconstr_loss_vonmise + (1.0-ramp)*reconstr_loss_gauss_vonmise    # start with a Gaussian model and fade in the true vonmises
+        # else:
+        #     reconstr_loss_vonmise = 0.0
 
         # COST FROM RECONSTRUCTION - Von Mises Fisher (sky) parts
         if sky_len>0:
