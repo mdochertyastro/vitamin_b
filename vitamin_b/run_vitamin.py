@@ -757,7 +757,6 @@ def gen_test(params=params,bounds=bounds,fixed_vals=fixed_vals):
         signal_test_noisefree = temp_noisefree
         signal_test_pars = temp_pars
         signal_test_snr = temp_snr
-        # signal_uufd = uufd
 
         print("Generated: %s/%s_%s.h5py ..." % (params['test_set_dir'],params['bilby_results_label'],params['run_label']))
 
@@ -775,14 +774,7 @@ def gen_test(params=params,bounds=bounds,fixed_vals=fixed_vals):
         hf.create_dataset('y_data_noisefree', data=signal_test_noisefree)
         hf.create_dataset('y_data_noisy', data=signal_test_noisy)
         hf.create_dataset('snrs', data=signal_test_snr)
-        # hf.create_dataset('uufd', data=signal_uufd)
         hf.close()
-
-        # create the bilby params required to recreate bilby run for likelihood evals
-
-        # hf = h5py.File('%s/%s_%d.h5py' % (params['test_set_dir'],'bilby_params',i),'w')
-        # hf.create_dataset('uufd', data=signal_uufd)
-        # hf.close()
 
 
 
