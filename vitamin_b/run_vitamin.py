@@ -97,6 +97,7 @@ parser.add_argument("--num_samples", type=int, default=10000, help="number of po
 parser.add_argument("--use_gpu", default=False, help="if True, use gpu")
 parser.add_argument("--importance_sampling", default=False, help="Apply importance sampling to VItamin posterior samples")
 parser.add_argument("--z_batch", type=int, default=1000, help="number of monte z samples")
+parser.add_argument("--save_vit", default=False, help="if True, save vit post samps to file and do monte loglike eval")
 args = parser.parse_args()
 
 global params; global bounds; global fixed_vals # can use params and bounds inside function without calling it
@@ -1617,17 +1618,19 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     RAW NORMALISED SAMPLE(S)
     #######################################################################
     '''
+    # try it just for 1 timeseries...
 
-    norm_samples, dt, _  = CVAE_model.run(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']), # y_data[0] because the firt dim is number of waveforms
+    # for i in range(num_timeseries):
+    norm_samples = CVAE_model.run(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']), # y_data[0] because the firt dim is number of waveforms
                                                           params['y_normscale'],
                                                           model_loc)
+    
 
     '''
     #######################################################################
     FINAL UNNORMALIZED AND PROCESSED SAMPLE(S)
     #######################################################################
     '''
-
     # unnormalize predictions
     for q_idx,q in enumerate(params['inf_pars']):
         par_min = q + '_min' # string addition
@@ -1642,35 +1645,34 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     SAVE NORM AND FINALISED SAMPLES
     #######################################################################
     '''
-
+    #some saving vals:
+    ndat=params['ndata']
+    npar=len(params['rand_pars'])
+    ndet=len(params['det'])
     if save_vit == True:
-        # os.system('mkdir -p %s' % f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz') # ALREADY CREATED!
-        hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}posts_testset{i}.h5py','w')
+        print('woops doesnt work')
+        os.system('mkdir -p %s' % f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz') # need this line
+        hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}posts_testset{0}.h5py','w') # might want to add time to filename 
         for index,name in enumerate(params['inf_pars']):
-            hf.create_dataset(f'{name}_norm_post', data=norm_samples[i,:,index]) # has to be norm samples, that havent been overwritten
-            hf.create_dataset(f'{name}_final_post', data=vit_samples[i,:,index])
+            hf.create_dataset(f'{name}_norm_post', data=norm_samples[:,index]) # has to be norm samples, that havent been overwritten
+            hf.create_dataset(f'{name}_final_post', data=vit_samples[:,index])
         hf.close()
         print(f'... Saved {num_samples} norm and final vitamin posterior samples to file')
-    
         '''
         #######################################################################
         VITAMIN LOGLIKES (only if save_vit == True)
         #######################################################################
         '''
-
         vit_loglikes=np.zeros((num_samples))
-
         print('########################################################################################')
         print(f'#### VITAMIN LOGLIKELIHOODS: number of vitamin samples looped: {num_samples}. z_batchsize = {z_batch} ####')
         print('########################################################################################')
-
-        for i in range(num_samples):
-            progress(i+1,num_samples,'')
-            vit_loglikes[i] = CVAE_model.monte(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']),
+        for j in range(num_samples):
+            progress(j+1,num_samples,'')
+            vit_loglikes[j] = CVAE_model.monte(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']),
                                                               params['y_normscale'],
-                                                              model_loc, norm_samples[i,...],z_batch)
-
-            hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}vitloglikes_{z_batch}zbatch_testset{i}.h5py','w')
+                                                              model_loc, norm_samples[j,...],z_batch)
+            hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}vitloglikes_{z_batch}zbatch_testset{0}.h5py','w')
             hf.create_dataset('vit_loglikes', data=vit_loglikes)
             hf.close()
             print(f'... Saved {num_samples} vitamin loglikes to file')
@@ -1691,7 +1693,7 @@ if args.test:
     test(params,bounds,fixed_vals,use_gpu=bool(args.use_gpu))
 if args.gen_samples:
     gen_samples(params,bounds,fixed_vals,model_loc=args.pretrained_loc,
-                test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),z_batch=args.z_batch)
+                test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),z_batch=args.z_batch,save_vit=False) # need to hard code save vit in for now
 
 '''
 somethings to add to args/parser:
