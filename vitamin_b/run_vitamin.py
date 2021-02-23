@@ -1706,4 +1706,6 @@ somethings to add to args/parser:
 '''
 For future reference:
 python run_vitamin.py --gen_samples True --use_gpu True --pretrained_loc ./inverse_model_dir_public_model2/inverse_model.ckpt --test_set_loc ./test_sets/all_4_samplers/test_waveforms/ --z_batch 1000
+
+python run_vitamin.py --gen_samples True --pretrained_loc ./inverse_model_dir_chris_new_model/inverse_model.ckpt --test_set_loc ./test_sets/dynesty_forced_phase_margin/test_waveforms/ --z_batch 1000 --num_samples 50 --use_gpu True --save_vit False
 '''
