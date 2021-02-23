@@ -1487,7 +1487,7 @@ def test(params=params,bounds=bounds,fixed_vals=fixed_vals,use_gpu=False):
 
     return
 
-def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='model_ex/model.ckpt',test_set='test_waveforms/',num_samples=None,plot_corner=True,use_gpu=False,z_batch=None):
+def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='model_ex/model.ckpt',test_set='test_waveforms/',num_samples=None,plot_corner=False,use_gpu=True,z_batch=None,save_vit=False):
     """ Function to generate VItamin samples given a trained model
 
     Parameters
@@ -1518,10 +1518,8 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     def progress(count, total, suffix=''): # function to print progress bar in cmd prompt
         bar_len = 60
         filled_len = int(round(bar_len * count / float(total)))
-
         percents = round(100.0 * count / float(total), 1)
         bar = '=' * filled_len + '-' * (bar_len - filled_len)
-
         sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', suffix))
         sys.stdout.flush()  # As suggested by Rom Ruben
 
@@ -1589,7 +1587,6 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     # Extract the prior bounds from training/testing files
     data['y_data_noisy'] = np.concatenate(np.array(data['y_data_noisy']), axis=0)
     
-
     y_data_test = data['y_data_noisy']
 
     # Define time series normalization factor to use on test samples. We consistantly use the same normscale value if loading by chunks
@@ -1605,47 +1602,11 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
                 y_data_test_copy[i,:,j] = y_data_test[i,idx_range]
         y_data_test = y_data_test_copy
     num_timeseries=y_data_test.shape[0]
-    
-
-    """
-    # Daniel Williams waveforms
-    num_timeseries = 1
-    f = open('daniel_williams_BNU_waveforms/hunter-mdc/0.json')
-    data = json.load(f)
-    y_data_test = np.zeros((1,params['ndata'],len(params['det'])))
-    for det_idx,det in enumerate(params['det']):
-        y_data_test[0,-(np.array(data['data'][det]).shape[0]):,det_idx] = np.array(data['data'][det])
-
-    # Get x_data_test
-    x_data_test = []
-    for idx, i in enumerate(params['inf_pars']):
-        if i == data['meta'][i]:
-            x_data_test.append(data['meta'][i])
-    x_data_test = np.array(x_data_test)
-    print(x_data_test)
-    exit()
-
-    # whiten Daniel waveforms
-    # Set up interferometers. These default to their design
-    # sensitivity
-
-    # define the start time of the timeseries
-    start_time = params['ref_geocent_time']-params['duration']/2.0
-
-    ifos = bilby.gw.detector.InterferometerList(params['det'])
-    # set noise to be colored Gaussian noise
-    ifos.set_strain_data_from_power_spectral_densities(
-    sampling_frequency=params['ndata'], duration=params['duration'],
-    start_time=start_time)
-
-    for det_idx,det in enumerate(params['det']):
-        fft_waveform = np.fft.rfft(y_data_test[0,:,det_idx])
-        whitened_signal = fft_waveform / ifos[det_idx].amplitude_spectral_density_array
-        y_data_test[0,:,det_idx] = np.fft.irfft(whitened_signal) + np.random.normal(loc=0,scale=1.0,size=(params['ndata']))
-    """
-
+ 
     '''
-    Mention to Chris that I got rid of the first samples dimension to restrict to one waveform for initial simplicity
+    #######################################################################
+    START GEN SAMPLES
+    #######################################################################
     '''
 
     vit_samples = np.zeros((num_samples,len(params['inf_pars']))) # have changed to one timeseries for simplicity so have shape (nsamp,nparams)
@@ -1657,33 +1618,9 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     #######################################################################
     '''
 
-
     norm_samples, dt, _  = CVAE_model.run(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']), # y_data[0] because the firt dim is number of waveforms
                                                           params['y_normscale'],
                                                           model_loc)
-
-    # print('... Runtime to generate samples is: ' + str(dt))
-    
-    print(f'normalized samples = {norm_samples.shape}')
-
-    '''
-    I would need to input the importance sampling here as the next 2 stpes of processing output
-    the 'true' samples for the corner plot BUT in doing these 2 processing steps, we change the sample values
-    that came directly from the dists so cant do log_prob.
-
-    There are 2 places were the raw distribution samples undergo processing (this is important because for log_prob need them in their raw form from dist sample):
-
-    1. Inside CVAE_model.run when the unit_xyz is sampled from von_mises and then undergoes 2 forms of processing. One converts from unit_xys to unscaled ra/dec. 
-       Then the next stage scaled the RA/Dec further. This is dealth with in the log_probbing as we take the scaled RA/DEC then unscale them THEN convert back
-       to unit_xyz before evaluating logprob.
-
-    2. Inside this function (run_vitamin.gen_samples) when it 1. unnormalizes the sampels 2. Converts RA to HA and back to RA. At this point, the samples are fully
-       processed and this is how they appear on the corner plot.
-    '''
-
-    # '''
-    # Need to do log_prob here ^^^ beofre processing step 2 below of unnormalising and RA conversion.
-    # '''
 
     '''
     #######################################################################
@@ -1697,122 +1634,50 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
         par_max = q + '_max'
         vit_samples[:,q_idx] = (norm_samples[:,q_idx] * (bounds[par_max] - bounds[par_min])) + bounds[par_min]
 
-
     # Convert hour angle back to RA
     vit_samples = convert_ra_to_hour_angle(vit_samples, params, rand_pars=False)
 
-    # print(f'final samples = {vit_samples.shape}')
+    '''
+    #######################################################################
+    SAVE NORM AND FINALISED SAMPLES
+    #######################################################################
+    '''
 
-    # '''
-    # #######################################################################
-    # VITAMIN LOGLIKES
-    # #######################################################################
-    # '''
-
-
-    vit_loglikes=np.zeros((num_samples))
-
-    # z_batch=1000 # specify batch size of monte function
-
-    print('########################################################################################')
-    print(f'#### VITAMIN LOGLIKELIHOODS: number of vitamin samples looped: {num_samples}. z_batchsize = {z_batch} ####')
-    print('########################################################################################')
-
-    # LOTS OF GRAPH TIMING GOING ON....ignoring for now as not too interested in speed yet
-
-    total_1=time.time()
-    graph_time_counter=0 # initiate counter
-    for i in range(num_samples):
-        single_loop_1=time.time()
-        progress(i+1,num_samples,'')# f'Calculating Loglikelihood for {num_samples} VItamin sample(s)')
-        
-        vit_loglikes[i], single_graph_time = CVAE_model.monte(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']),
-                                                          params['y_normscale'],
-                                                          model_loc, norm_samples[i,...],z_batch)
-        
-        single_loop_2=time.time()
-        single_loop_time=single_loop_2-single_loop_1
-        graph_time_counter=graph_time_counter+single_graph_time
-        # print(f'loop{i} = {np.round(single_loop_time,3)}s. graph{i} = {np.round(single_graph_time,3)}s. Loop Overhead = {np.round(single_loop_time-single_graph_time,3)}s. Graph = {np.round((single_graph_time/single_loop_time*100),3)}% & overhead = {np.round(((single_loop_time-single_graph_time)/single_loop_time*100),3)}%')
-    total_2=time.time()
-    total_loop_time=total_2-total_1
-
-    # print(f'Full {num_samples} samples loop = {np.round(total_loop_time,3)}s. Sum of graphs = {np.round(graph_time_counter,3)}s. Total overhead = {np.round(total_loop_time-graph_time_counter,3)}s. Graphs are {np.round((graph_time_counter/total_loop_time*100),3)}% & overheads are {np.round(((total_loop_time-graph_time_counter)/total_loop_time*100),3)}%')
-    # option 2 promising as need 1000 samp but might get away with 100z. chris happy with <~200s
-    # print(f'loglikelihoods of {num_samples} normalised samples with z_batchsize {args.z_batch} were calculated in {total_loop_time} seconds and are: {vitamin_loglikes, vitamin_loglikes.shape}')
+    if save_vit == True:
+        # os.system('mkdir -p %s' % f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz') # ALREADY CREATED!
+        hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}posts_testset{i}.h5py','w')
+        for index,name in enumerate(params['inf_pars']):
+            hf.create_dataset(f'{name}_norm_post', data=norm_samples[i,:,index]) # has to be norm samples, that havent been overwritten
+            hf.create_dataset(f'{name}_final_post', data=vit_samples[i,:,index])
+        hf.close()
+        print(f'... Saved {num_samples} norm and final vitamin posterior samples to file')
     
-    # print(f'Loglikes = {vit_loglikes} of shape{vit_loglikes.shape}')
+        '''
+        #######################################################################
+        VITAMIN LOGLIKES (only if save_vit == True)
+        #######################################################################
+        '''
 
-    # '''
-    # #######################################################################
-    # BILBY LOGLIKES
-    # #######################################################################
-    # '''
+        vit_loglikes=np.zeros((num_samples))
 
-    # '''
-    # So, now have 1 vit sample, 1 vit loglike and the (3,129) freq domain strain data. Need to isolate this strain
-    # data in this umbrella gen_samples function then read it into lower level bilby function in CVAE_model.py
+        print('########################################################################################')
+        print(f'#### VITAMIN LOGLIKELIHOODS: number of vitamin samples looped: {num_samples}. z_batchsize = {z_batch} ####')
+        print('########################################################################################')
 
-    # Step 1 - isolate uufd in this function: (DONE)
-    # Step 2 - read in uufd to daughter bilby function
-    # '''
+        for i in range(num_samples):
+            progress(i+1,num_samples,'')
+            vit_loglikes[i] = CVAE_model.monte(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']),
+                                                              params['y_normscale'],
+                                                              model_loc, norm_samples[i,...],z_batch)
 
-    # # isolate raw freq domain strain data and feed into daughter bilby fuction
+            hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}vitloglikes_{z_batch}zbatch_testset{i}.h5py','w')
+            hf.create_dataset('vit_loglikes', data=vit_loglikes)
+            hf.close()
+            print(f'... Saved {num_samples} vitamin loglikes to file')
+    else:
+        print(f'... Not saving vit posterior samples to file and not doing loglike eval')
+    
 
-    # uufd= h5py.File(dataLocations[0]+'/'+files[0], 'r')['uufd'] # need to make part of loop if want to do more than one waveform later
-
-    # # uufd=data['uufd']
-    # # print(uufd.shape)
-
-    # # x_test_final=h5py.File('../single_waveform/data_0.h5py', 'r')['x_data'].value[0]
-
-
-    # bilby_loglikes=CVAE_model.bilby_stuff(fixed_vals,params,bounds,
-    #                                     vit_loglikes,vit_samples,uufd)
-
-
-    # '''
-    # #######################################################################
-    # COMPARING/PLOTTING LOGLIKES 
-    # #######################################################################
-    # '''
-
-    # print(f'Vitamin Loglikes = {vit_loglikes} of shape{vit_loglikes.shape}')
-    # print(f'Bilby Loglikes = {bilby_loglikes} of shape{bilby_loglikes.shape}')
-
-    # fig,ax=plt.subplots(figsize=(7,7))
-    # ax.set(xlabel='bilby loglikes',
-    #        ylabel='vitamin loglikes')
-    # ax.scatter(bilby_loglikes,vit_loglikes)
-    # fig.savefig(f'results/{time.strftime("%Y%m%d-%H%M%S")}-{num_samples}samples-scatter.png', bbox_inches='tight')
-
-
-
-    if plot_corner==True:
-        # Get infered parameter latex labels for corner plot
-        parnames=[]
-        for k_idx,k in enumerate(params['rand_pars']):
-            if np.isin(k, params['inf_pars']):
-                parnames.append(params['corner_labels'][k])
-        # Define default corner plot arguments
-        defaults_kwargs = dict(
-                bins=50, smooth=0.9, label_kwargs=dict(fontsize=16),
-                title_kwargs=dict(fontsize=16), show_titles=False,
-                truth_color='black', quantiles=None,#[0.16, 0.84],
-                levels=(0.50,0.90), density=True,
-                plot_density=False, plot_datapoints=True,
-                max_n_ticks=3)
-        figure = corner.corner(vit_samples[:,:],**defaults_kwargs,labels=parnames)
-        plt.savefig('./vitamin_corner_timeseries-%d.png' % 1)
-        plt.close()
-        print('... Saved corner plot to -> ./vitamin_corner_timeseries-%d.png' % 1)
-        print()
-
-
-
-    # print(x_test_final)
-
-    # print('... All posterior samples generated for all waveforms in test sample directory!')
     return vit_samples
 
 # If running module from command line
@@ -1834,4 +1699,9 @@ somethings to add to args/parser:
 - add importance sampling arg if true then and only then do the likelihood bit
 - add z batch size parser command line arg DONE
 
+'''
+
+'''
+For future reference:
+python run_vitamin.py --gen_samples True --use_gpu True --pretrained_loc ./inverse_model_dir_public_model2/inverse_model.ckpt --test_set_loc ./test_sets/all_4_samplers/test_waveforms/ --z_batch 1000
 '''
