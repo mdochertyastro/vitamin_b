@@ -1077,10 +1077,8 @@ def monte(params, y_data_test, siz_x_data, y_normscale, load_dir, norm_sample,z_
             von_mises = tfp.distributions.VonMises(
                           loc=2.0*np.pi*tf.reshape(r2_xzy_mean_vonmise,[bs_ph,vonmise_len]),   # remap 0>1 mean onto 0->2pi range
                           concentration=con_vonmise)
-            psi_loglike = von_mises.log_prob(tf.boolean_mask(samp_ph,vonmise_mask,axis=1)) # hopefully the raw norm samp doesnt need remapped like it doews for the training
-        
-        # tf.reduce_sum(von_mises.log_prob(2.0*np.pi*tf.reshape(tf.boolean_mask(x_ph,vonmise_mask,axis=1),[-1,vonmise_len])),axis=1) # the only thing this is doing is multiplying by 2pi, need to work out if i need to un-engineer this tomorrow
-
+            psi_loglike = von_mises.log_prob(2.0*np.pi*tf.reshape(tf.boolean_mask(samp_ph,vonmise_mask,axis=1),[-1,vonmise_len])) # could wrap in tf.reduce_sumn axis=1 in more than opne Von mise variable
+        # print(psi_loglike) # do i need to expand dims?
         # '''
         # SKY PARAMS
         # '''
@@ -1102,34 +1100,15 @@ def monte(params, y_data_test, siz_x_data, y_normscale, load_dir, norm_sample,z_
         # print(f'sky loglike = {sky_loglike.get_shape()}')
 
 
-        '''
-        COMBINE LOGLIKES
-        TODO check if these 2 methods underneat hgive the same result...DONE - they both give the same result, ask Chris is one is preferable:
-        '''
-        # single_loglike_cheap=tf.squeeze(tf.reduce_sum([masses_loglike + trunc_gauss_loglike + sky_loglike],axis=0)) # method 1
         single_loglike=tf.concat([masses_loglike,trunc_gauss_loglike,psi_loglike],axis=1) # method 2 (2 lines) get into shape (batch,3)
         single_loglike=tf.reduce_sum(single_loglike, axis=1) # then reduce sum over the axis=1 to get shape (batch) (1d array)
 
-
-
-
-        # print(f'single loglike size = {single_loglike.get_shape()}')
-        # loglike_ph=tf.concat([loglike_ph, [single_loglike]],axis=0)
-        
-        # loglike_ph=tf.slice(loglike_ph, [1], [Nj]) # chop off the first [0] placeholder entry to leave only the summed loglikes of the 3 dists, one entry fror each Nj iteration
-        
+    
         '''
         CALC EXPECTATION VALUE (2 METHODS)
         '''
 
         final_loglike=tf.reduce_logsumexp(single_loglike, axis=0) # calc expectation value method 1
-
-
-
-        # print(f'final loglike size = {final_loglike.get_shape()}')
-        # final_loglike=tf.subtract(tf.reduce_logsumexp(loglike_ph, axis=0), tf.log(tf.Variable(,dtype=tf.dtypes.float32))) # calc expectation value method 2
-
-        # print(f'norm samples = {norm_sample[0,...].shape}')
 
         '''
         Run Session
@@ -1137,31 +1116,17 @@ def monte(params, y_data_test, siz_x_data, y_normscale, load_dir, norm_sample,z_
         init = tf.initialize_all_variables()
         session.run(init)
         saver_VICI = tf.train.Saver(tf.global_variables())
-        saver_VICI.restore(session,load_dir)
-    # ns = z_batch # number of zj samps done in parallel = batch size 
+        saver_VICI.restore(session,load_dir) 
     y_data_test_exp = np.tile(y_data_test,(z_batch,1))/y_normscale
     y_data_test_exp = y_data_test_exp.reshape(-1,params['ndata'],num_det)
 
     norm_sample_tiled = np.tile(norm_sample,(z_batch,1))
-    single_graph_1=time.time()
-    loglike, sky_log, single_log, trunc_log, mass_log = session.run([final_loglike, sky_loglike, single_loglike, trunc_gauss_loglike, masses_loglike],feed_dict={samp_ph: norm_sample_tiled, bs_ph: z_batch, y_ph: y_data_test_exp})
-    single_graph_2=time.time()
+    loglike = session.run([final_loglike],feed_dict={samp_ph: norm_sample_tiled, bs_ph: z_batch, y_ph: y_data_test_exp})
+    
+    loglike=loglike[0]
+    # print(loglike)
 
-    single_graph_time=single_graph_2-single_graph_1
+    
 
-    # print(f'time to gen {ns} z batch sampels and likelihood={t2-t1}')
 
-    # print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-    # # print(f'z samples = {ns}')
-    # print(f'mass shape = {mass_log.shape}')
-    # print(f'trunc shape = {trunc_log.shape}')
-    # print(f'sky shape = {sky_log.shape}')
-    # # print(trunc_log_full)
-    # print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-    # print(trunc_log)
-
-    # print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-    # print(f'single shape = {single_log.shape}')
-    # print(f'final = {loglike} with shape {loglike.shape}')
-
-    return loglike,single_graph_time
+    return loglike

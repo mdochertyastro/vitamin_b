@@ -26,11 +26,11 @@ with open(fixed_vals, 'r') as fp:
 
 # Raw json loglikes
 
-bilby_json = '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/test_sets/dynesty_forced_phase_margin/test_dynesty1/dynesty_forced_phase_margin_0_result.json'
-result = bilby.result.read_in_result(filename=bilby_json)
-bilby_raw_loglikes = result.log_likelihood_evaluations
-# bilby_raw_loglikes_maybe = result.posterior['log_likelihood'] # note this and the one above are the exact same!
-num_samples=bilby_raw_loglikes.shape[0]
+# bilby_json = '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/test_sets/dynesty_forced_phase_margin/test_dynesty1/dynesty_forced_phase_margin_0_result.json'
+# result = bilby.result.read_in_result(filename=bilby_json)
+# bilby_raw_loglikes = result.log_likelihood_evaluations
+# # bilby_raw_loglikes_maybe = result.posterior['log_likelihood'] # note this and the one above are the exact same!
+# num_samples=bilby_raw_loglikes.shape[0]
 
 # n, bins, patches = plt.hist(x=bilby_raw_loglikes, bins='auto', color='#0504aa',alpha=0.7, rwidth=0.85)
 # # _,_,_ = plt.hist(x=bilby_raw_loglikes_maybe, bins='auto', color='red',alpha=0.1, rwidth=0.85)
@@ -42,17 +42,18 @@ num_samples=bilby_raw_loglikes.shape[0]
 '''HOMEMADE READ-INS'''
 
 test_sampler_file = '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/test_sets/dynesty_forced_phase_margin/test_dynesty1/dynesty_forced_phase_margin_0.h5py'
-# test_waveform_file = '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/test_sets/dynesty_forced_phase_margin/test_waveforms/dynesty_forced_phase_margin_0.h5py'
+# # test_waveform_file = '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/test_sets/dynesty_forced_phase_margin/test_waveforms/dynesty_forced_phase_margin_0.h5py'
 hf_sampler = h5py.File(test_sampler_file, 'r')
-# hf_waveform = h5py.File(test_waveform_file, 'r')
-
-mass_1_samples = hf_sampler['mass_1_post']
-mass_2_samples = hf_sampler['mass_2_post']
-luminosity_distance_samples = hf_sampler['luminosity_distance_post']
-theta_jn_samples=hf_sampler['theta_jn_post']
-psi_samples=hf_sampler['psi_post']
-geocent_time_samples=hf_sampler['geocent_time_post']
 uufd = hf_sampler['uufd']
+# # hf_waveform = h5py.File(test_waveform_file, 'r')
+
+# mass_1_samples = hf_sampler['mass_1_post']
+# mass_2_samples = hf_sampler['mass_2_post']
+# luminosity_distance_samples = hf_sampler['luminosity_distance_post']
+# theta_jn_samples=hf_sampler['theta_jn_post']
+# psi_samples=hf_sampler['psi_post']
+# geocent_time_samples=hf_sampler['geocent_time_post']
+
 
 ref_geocent_time = params['ref_geocent_time']
 duration = params['duration']
@@ -61,6 +62,21 @@ start_time = ref_geocent_time-duration/2.0
 
 priors = bilby.gw.prior.BBHPriorDict()
 priors['phase'] = bilby.gw.prior.Uniform(name='phase', minimum=bounds['phase_min'], maximum=bounds['phase_max'], boundary='periodic')
+
+vitloglikes_file = '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/vitamin_results/1det_7pars_256Hz/1000vitloglikes_1000zbatch_testset0.h5py'
+hf_vitloglike = h5py.File(vitloglikes_file, 'r')
+vit_loglikes=hf_vitloglike['vit_loglikes']
+num_samples=vit_loglikes.shape[0]
+
+vitpost_file = '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/vitamin_results/1det_7pars_256Hz/1000posts_testset0.h5py'
+hf_vitpost = h5py.File(vitpost_file, 'r')
+
+mass_1_samples = hf_vitpost['mass_1_final_post']
+mass_2_samples = hf_vitpost['mass_2_final_post']
+luminosity_distance_samples = hf_vitpost['luminosity_distance_final_post']
+theta_jn_samples=hf_vitpost['theta_jn_final_post']
+psi_samples=hf_vitpost['psi_final_post']
+geocent_time_samples=hf_vitpost['geocent_time_final_post']
 
 '''BILBY RUN'''
 
@@ -111,11 +127,14 @@ for i in range(num_samples):
     bilby_loglikes[i]=likelihood.log_likelihood_ratio()
 
 
+# plt.scatter(bilby_loglikes, vit_loglikes)
+
 # n, bins, patches = plt.hist(x=bilby_raw_loglikes, bins='auto', color='#0504aa',alpha=0.7, rwidth=0.85)
 _,_,_ = plt.hist(x=bilby_loglikes, bins='auto', color='red',alpha=0.7, rwidth=0.85)
+_,_,_ = plt.hist(x=vit_loglikes, bins='auto', color='blue',alpha=0.7, rwidth=0.85)
 plt.xlabel('bilby Loglikes')
 plt.ylabel('Frequency')
-plt.title(f'Bilby Loglikes for {num_samples} samples')
+plt.title(f'Bilby Loglikes for {num_samples} samples, bilby red, vit blue')
 plt.savefig(f'bilby_loglike_hist_{time.strftime("%Y%m%d-%H%M%S")}.png')
 
 

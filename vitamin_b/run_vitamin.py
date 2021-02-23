@@ -1693,7 +1693,7 @@ if args.test:
     test(params,bounds,fixed_vals,use_gpu=bool(args.use_gpu))
 if args.gen_samples:
     gen_samples(params,bounds,fixed_vals,model_loc=args.pretrained_loc,
-                test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),z_batch=args.z_batch,save_vit=False) # need to hard code save vit in for now
+                test_set=args.test_set_loc,num_samples=args.num_samples,use_gpu=bool(args.use_gpu),z_batch=args.z_batch,save_vit=True) # need to hard code save vit in for now
 
 '''
 somethings to add to args/parser:
