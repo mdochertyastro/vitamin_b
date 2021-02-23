@@ -108,8 +108,7 @@ for i in range(num_samples):
                 
 
     likelihood.parameters = likelihood_parameters
-    bilby_loglike_single = likelihood.log_likelihood_ratio()
-    bilby_loglikes[i]=bilby_loglike_single
+    bilby_loglikes[i]=likelihood.log_likelihood_ratio()
 
 
 # n, bins, patches = plt.hist(x=bilby_raw_loglikes, bins='auto', color='#0504aa',alpha=0.7, rwidth=0.85)
