@@ -1621,9 +1621,9 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     # try it just for 1 timeseries...
 
     # for i in range(num_timeseries):
-    norm_samples = CVAE_model.run(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']), # y_data[0] because the firt dim is number of waveforms
-                                                          params['y_normscale'],
-                                                          model_loc)
+    # norm_samples = CVAE_model.run(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']), # y_data[0] because the firt dim is number of waveforms
+    #                                                       params['y_normscale'],
+    #                                                       model_loc)
     
 
     '''
@@ -1632,13 +1632,13 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     #######################################################################
     '''
     # unnormalize predictions
-    for q_idx,q in enumerate(params['inf_pars']):
-        par_min = q + '_min' # string addition
-        par_max = q + '_max'
-        vit_samples[:,q_idx] = (norm_samples[:,q_idx] * (bounds[par_max] - bounds[par_min])) + bounds[par_min]
+    # for q_idx,q in enumerate(params['inf_pars']):
+    #     par_min = q + '_min' # string addition
+    #     par_max = q + '_max'
+    #     vit_samples[:,q_idx] = (norm_samples[:,q_idx] * (bounds[par_max] - bounds[par_min])) + bounds[par_min]
 
-    # Convert hour angle back to RA
-    vit_samples = convert_ra_to_hour_angle(vit_samples, params, rand_pars=False)
+    # # Convert hour angle back to RA
+    # vit_samples = convert_ra_to_hour_angle(vit_samples, params, rand_pars=False)
 
     '''
     #######################################################################
@@ -1650,14 +1650,33 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
     npar=len(params['rand_pars'])
     ndet=len(params['det'])
     if save_vit == True:
-        print('woops doesnt work')
         os.system('mkdir -p %s' % f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz') # need this line
-        hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}posts_testset{0}.h5py','w') # might want to add time to filename 
-        for index,name in enumerate(params['inf_pars']):
-            hf.create_dataset(f'{name}_norm_post', data=norm_samples[:,index]) # has to be norm samples, that havent been overwritten
-            hf.create_dataset(f'{name}_final_post', data=vit_samples[:,index])
-        hf.close()
-        print(f'... Saved {num_samples} norm and final vitamin posterior samples to file')
+        # hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}posts_testset{0}_{time.strftime("%Y%m%d-%H%M%S")}.h5py','w') # might want to add time to filename 
+        # for index,name in enumerate(params['inf_pars']):
+        #     hf.create_dataset(f'{name}_norm_post', data=norm_samples[:,index]) # has to be norm samples, that havent been overwritten
+        #     hf.create_dataset(f'{name}_final_post', data=vit_samples[:,index])
+        # hf.close()
+        # print(f'... Saved {num_samples} norm and final vitamin posterior samples to file')
+
+        '''
+        #######################################################################
+        BILBY SAMPLE READIN AND AND RENORM
+        #######################################################################
+        '''
+        test_sampler_file = '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/test_sets/dynesty_forced_phase_margin/test_dynesty1/dynesty_forced_phase_margin_0.h5py'
+        hf_sampler = h5py.File(test_sampler_file, 'r')
+        num_bilby_samples=hf_sampler['mass_1_post'].shape[0]
+        bilby_posts=np.zeros([num_bilby_samples,len(params['inf_pars'])])
+        for inf_par_idx, inf_par in enumerate(params['inf_pars']):
+            bilby_posts[:,inf_par_idx]=hf_sampler[inf_par+'_post']
+        # want to cut to match vit num samples (make this my vit standard of 1000)
+        bilby_posts=bilby_posts[:int(num_samples),:]
+        bilby_norm_samples=np.zeros_like(bilby_posts)
+        #renorm bilby samples:
+        for q_idx,q in enumerate(params['inf_pars']):
+            par_min = q + '_min' # string addition
+            par_max = q + '_max'
+            bilby_norm_samples[:,q_idx] = (bilby_posts[:,q_idx] - bounds[par_min]) / (bounds[par_max] - bounds[par_min])
         '''
         #######################################################################
         VITAMIN LOGLIKES (only if save_vit == True)
@@ -1671,11 +1690,11 @@ def gen_samples(params=params,bounds=bounds,fixed_vals=fixed_vals,model_loc='mod
             progress(j+1,num_samples,'')
             vit_loglikes[j] = CVAE_model.monte(params, np.expand_dims(y_data_test[0],axis=0), len(params['inf_pars']),
                                                               params['y_normscale'],
-                                                              model_loc, norm_samples[j,...],z_batch)
-            hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}vitloglikes_{z_batch}zbatch_testset{0}.h5py','w')
-            hf.create_dataset('vit_loglikes', data=vit_loglikes)
-            hf.close()
-            print(f'... Saved {num_samples} vitamin loglikes to file')
+                                                              model_loc, bilby_norm_samples[j,...],z_batch)
+        hf=h5py.File(f'vitamin_results/{ndet}det_{npar}pars_{ndat}Hz/{num_samples}vitloglikes_ofbilbyposts_{z_batch}zbatch_testset{0}_{time.strftime("%Y%m%d-%H%M%S")}.h5py','w')
+        hf.create_dataset('vit_bilby_loglikes', data=vit_loglikes)
+        hf.close()
+        print(f'... Saved {num_samples} vitamin loglikes to file')
     else:
         print(f'... Not saving vit posterior samples to file and not doing loglike eval')
     

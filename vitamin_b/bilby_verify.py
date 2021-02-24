@@ -163,6 +163,22 @@ vit_sample=np.array([mass_1_samples[0],mass_2_samples[0],luminosity_distance_sam
 inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','psi'] # this is the master order to go by
 
 
+vitloglike_bilbysample_file= '/scratch/wiay/matthewd/msci_project/vitamin_b/vitamin_b/vitamin_results/1det_7pars_256Hz/1000vitloglikes_ofbilbyposts_1000zbatch_testset0_20210224-154050.h5py'
+hf_vl_bs=h5py.File(vitloglike_bilbysample_file,'r')
+vl_bs=hf_vl_bs['vit_bilby_loglikes']
+# num_samples=vl_bs.shape[0]
+
+
+print(vl_bs[()])
+
+# n, bins, patches = plt.hist(x=bilby_raw_loglikes, bins='auto', color='#0504aa',alpha=0.7, rwidth=0.85)
+# _,_,_ = plt.hist(x=vl_bs, bins='auto', color='red',alpha=0.7, rwidth=0.85)
+# # _,_,_ = plt.hist(x=vit_loglikes, bins='auto', color='blue',alpha=0.7, rwidth=0.85)
+# plt.xlabel('bilby Loglikes')
+# plt.ylabel('Frequency')
+# plt.title(f'Bilby Loglikes for {num_samples} samples, bilby red, vit blue')
+# plt.savefig(f'vl_bs_hist_{time.strftime("%Y%m%d-%H%M%S")}.png')
+
 # start sample testing/manipulation - single sample
 
 # print(norm_sample)
@@ -190,29 +206,29 @@ inf_pars=['mass_1','mass_2','luminosity_distance','geocent_time','theta_jn','psi
 
 # further testing - multiple samples:
 
-nsamp=10
+# nsamp=10
 
-norm_samples=np.zeros([nsamp,len(inf_pars)])
-vit_samples=np.zeros_like(norm_samples)
-final_samples=np.zeros_like(norm_samples)
-renorm_samples=np.zeros_like(norm_samples)
+# norm_samples=np.zeros([nsamp,len(inf_pars)])
+# vit_samples=np.zeros_like(norm_samples)
+# final_samples=np.zeros_like(norm_samples)
+# renorm_samples=np.zeros_like(norm_samples)
 
-for i in range(nsamp):
-    norm_samples[i,:]=[mass_1_norm_samples[i],mass_2_norm_samples[i],luminosity_distance_norm_samples[i],geocent_time_norm_samples[i],theta_jn_norm_samples[i],psi_norm_samples[i]]
-    vit_samples[i,:]=[mass_1_samples[i],mass_2_samples[i],luminosity_distance_samples[i],geocent_time_samples[i],theta_jn_samples[i],psi_samples[i]]
+# for i in range(nsamp):
+#     norm_samples[i,:]=[mass_1_norm_samples[i],mass_2_norm_samples[i],luminosity_distance_norm_samples[i],geocent_time_norm_samples[i],theta_jn_norm_samples[i],psi_norm_samples[i]]
+#     vit_samples[i,:]=[mass_1_samples[i],mass_2_samples[i],luminosity_distance_samples[i],geocent_time_samples[i],theta_jn_samples[i],psi_samples[i]]
 
-for q_idx,q in enumerate(params['inf_pars']):
-        par_min = q + '_min' # string addition
-        par_max = q + '_max'
-        final_samples[:,q_idx] = (norm_samples[:,q_idx] * (bounds[par_max] - bounds[par_min])) + bounds[par_min]
+# for q_idx,q in enumerate(params['inf_pars']):
+#         par_min = q + '_min' # string addition
+#         par_max = q + '_max'
+#         final_samples[:,q_idx] = (norm_samples[:,q_idx] * (bounds[par_max] - bounds[par_min])) + bounds[par_min]
 
-#  unnormalize predictions
-for q_idx,q in enumerate(params['inf_pars']):
-    par_min = q + '_min' # string addition
-    par_max = q + '_max'
-    renorm_samples[:,q_idx] = (final_samples[:,q_idx] - bounds[par_min]) / (bounds[par_max] - bounds[par_min])
+# #  unnormalize predictions
+# for q_idx,q in enumerate(params['inf_pars']):
+#     par_min = q + '_min' # string addition
+#     par_max = q + '_max'
+#     renorm_samples[:,q_idx] = (final_samples[:,q_idx] - bounds[par_min]) / (bounds[par_max] - bounds[par_min])
 
-print(norm_samples)
-print(vit_samples)
-print(final_samples)
-print(renorm_samples)
+# print(norm_samples)
+# print(vit_samples)
+# print(final_samples)
+# print(renorm_samples)
